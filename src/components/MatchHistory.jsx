@@ -29,7 +29,8 @@ import {
   deleteSavedMatch, 
   updateSavedMatch, 
   clearAllSavedMatches, 
-  calculateStats 
+  calculateStats,
+  STORAGE_KEY
 } from '../utils/storage';
 import { translations } from '../constants/translations';
 
@@ -71,6 +72,13 @@ export default function MatchHistory({ onLoadMatchIntoCalculator, onNewMatchSave
 
   useEffect(() => {
     loadData();
+    const handleSync = () => loadData();
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('vexiq_storage_change', handleSync);
+    return () => {
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('vexiq_storage_change', handleSync);
+    };
   }, [onNewMatchSaved]);
 
   const handleDelete = (id) => {
@@ -128,7 +136,10 @@ export default function MatchHistory({ onLoadMatchIntoCalculator, onNewMatchSave
           const existingIds = new Set(current.map(m => m.id));
           const newEntries = imported.filter(m => !existingIds.has(m.id));
           const combined = [...newEntries, ...current];
-          localStorage.setItem('vexiq_levelup_saved_matches_v1', JSON.stringify(combined));
+          if (typeof window !== 'undefined' && window.localStorage) {
+            window.localStorage.setItem(STORAGE_KEY, JSON.stringify(combined));
+            window.dispatchEvent(new CustomEvent('vexiq_storage_change', { detail: { action: 'import', count: combined.length } }));
+          }
           loadData();
           alert(`Imported ${newEntries.length} matches!`);
         }
@@ -155,8 +166,10 @@ export default function MatchHistory({ onLoadMatchIntoCalculator, onNewMatchSave
   });
 
   const sortedMatches = [...filteredMatches].sort((a, b) => {
-    if (sortBy === 'newest') return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-    if (sortBy === 'oldest') return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+    const timeA = new Date(a.timestamp || 0).getTime() || 0;
+    const timeB = new Date(b.timestamp || 0).getTime() || 0;
+    if (sortBy === 'newest') return timeB - timeA;
+    if (sortBy === 'oldest') return timeA - timeB;
     if (sortBy === 'highest') return (b.score || 0) - (a.score || 0);
     if (sortBy === 'lowest') return (a.score || 0) - (b.score || 0);
     if (sortBy === 'stopTime') return (b.skillsStopTime || 0) - (a.skillsStopTime || 0);

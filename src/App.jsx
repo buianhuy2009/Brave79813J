@@ -286,8 +286,17 @@ export default function App() {
             <span>•</span>
             <span className="text-cyan-600 dark:text-cyan-400 font-bold">Team Brave 79813J (Vietnam 🇻🇳)</span>
           </div>
-          <div className="text-slate-400">
-            Crafted with modern UI/UX for Robotics Students, Referees & Coaches Worldwide
+          <div className="flex items-center gap-3 text-slate-400">
+            <span>Crafted with modern UI/UX for Robotics Students Worldwide</span>
+            <span>•</span>
+            <a 
+              href="https://github.com/buianhuy2009/Brave79813J"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-cyan-600 dark:text-cyan-400 font-bold hover:underline inline-flex items-center gap-1"
+            >
+              GitHub (Open Source)
+            </a>
           </div>
         </div>
       </footer>

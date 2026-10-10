@@ -16,7 +16,9 @@ import {
   Heart,
   Flame,
   Layers,
-  FileText
+  FileText,
+  Code2,
+  ExternalLink
 } from 'lucide-react';
 import { GAME_INFO } from '../constants/rules';
 import { translations } from '../constants/translations';
@@ -28,7 +30,7 @@ export default function Home({ onNavigate, lang = 'en' }) {
   return (
     <div className="space-y-12 pb-16 animate-fadeIn">
       
-      {/* HERO SECTION */}
+      {/* 1. HERO SECTION */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-white via-slate-50 to-cyan-50/30 dark:from-slate-900 dark:via-slate-900/90 dark:to-slate-950 border border-slate-200 dark:border-slate-800 p-6 sm:p-10 md:p-12 shadow-xl shadow-cyan-500/5">
         
         {/* Ambient Glowing Blobs */}
@@ -157,7 +159,117 @@ export default function Home({ onNavigate, lang = 'en' }) {
         </div>
       </section>
 
-      {/* 4 CORE FEATURES GRID (Short & Simple) */}
+      {/* 2. ABOUT TEAM BRAVE 79813J (VIETNAM 🇻🇳) & WHY WE BUILT THIS (Shown Before Features) */}
+      <section className="relative rounded-3xl bg-gradient-to-tr from-slate-900 via-indigo-950 to-slate-900 text-white p-6 sm:p-10 md:p-12 border border-indigo-900/40 shadow-2xl overflow-hidden">
+        
+        {/* Glow ambient accents */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-red-600/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-yellow-500/15 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 max-w-4xl mx-auto space-y-8">
+          
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
+            <div className="space-y-1.5">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/20 text-red-300 border border-red-500/30 text-xs font-black uppercase tracking-wider">
+                <span>🇻🇳</span>
+                <span>{t.teamStoryBadge}</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-white flex items-center gap-2">
+                <span>{t.teamStoryTitle}</span>
+              </h2>
+            </div>
+
+            <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-2xl border border-white/10 backdrop-blur-md self-start sm:self-auto">
+              <Award className="w-5 h-5 text-amber-400" />
+              <span className="text-xs font-mono font-bold text-slate-200">
+                VIQRC #79813J
+              </span>
+            </div>
+          </div>
+
+          {/* Team Bio & Story (Honest origin: no ranking / no "we aren't the best" claims) */}
+          <div className="space-y-4 text-slate-300 text-xs sm:text-sm md:text-base leading-relaxed">
+            <p>
+              {t.teamStoryDesc}
+            </p>
+          </div>
+
+          {/* Why We Built Each Tool */}
+          <div className="bg-white/5 border border-white/10 rounded-3xl p-6 sm:p-8 space-y-4 backdrop-blur-md">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                <Flame className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg sm:text-xl font-black text-white">
+                {t.whyWeMadeTitle}
+              </h3>
+            </div>
+
+            <div className="space-y-3.5 text-slate-300 text-xs sm:text-sm leading-relaxed">
+              <p>{t.whyWeMadeP1}</p>
+              <p>{t.whyWeMadeP2}</p>
+              <p>{t.whyWeMadeP3}</p>
+              <p>{t.whyWeMadeP4}</p>
+              <p className="text-cyan-300 font-semibold pt-2 border-t border-white/10">
+                {t.teamStoryClosing}
+              </p>
+            </div>
+          </div>
+
+          {/* 3 Pillars: Completely Open Source + Made in Vietnam + Practical & Simple */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+            
+            {/* Pillar 1: Completely Open Source with GitHub Link */}
+            <div className="p-5 rounded-2xl bg-white/5 border border-cyan-500/30 space-y-3 flex flex-col justify-between hover:bg-white/10 transition-colors">
+              <div className="space-y-2">
+                <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
+                  <Code2 className="w-5 h-5" />
+                </div>
+                <h4 className="font-extrabold text-sm text-white">{t.openSourceTitle}</h4>
+                <p className="text-xs text-slate-300 leading-normal">
+                  {t.openSourceDesc}
+                </p>
+              </div>
+              <a
+                href="https://github.com/buianhuy2009/Brave79813J"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-slate-950 text-xs font-bold transition-all w-fit border border-cyan-500/40 shadow-sm"
+              >
+                <span>{t.viewOnGithub}</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+
+            {/* Pillar 2: Made in Vietnam */}
+            <div className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+              <div className="w-9 h-9 rounded-xl bg-red-500/20 text-red-400 flex items-center justify-center">
+                <Globe2 className="w-5 h-5" />
+              </div>
+              <h4 className="font-extrabold text-sm text-white">{t.vietnamPrideTitle}</h4>
+              <p className="text-xs text-slate-400 leading-normal">
+                {t.vietnamPrideDesc}
+              </p>
+            </div>
+
+            {/* Pillar 3: Practical & Simple */}
+            <div className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <h4 className="font-extrabold text-sm text-white">{t.studentCenteredTitle}</h4>
+              <p className="text-xs text-slate-400 leading-normal">
+                {t.studentCenteredDesc}
+              </p>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      {/* 3. CORE PLATFORM FEATURES GRID */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
@@ -278,103 +390,7 @@ export default function Home({ onNavigate, lang = 'en' }) {
         </div>
       </section>
 
-      {/* ABOUT TEAM BRAVE 79813J (VIETNAM 🇻🇳) & WHY WE BUILT THIS */}
-      <section className="relative rounded-3xl bg-gradient-to-tr from-slate-900 via-indigo-950 to-slate-900 text-white p-6 sm:p-10 md:p-12 border border-indigo-900/40 shadow-2xl overflow-hidden">
-        
-        {/* Glow ambient accent */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-red-600/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-yellow-500/15 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 max-w-4xl mx-auto space-y-8">
-          
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
-            <div className="space-y-1.5">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/20 text-red-300 border border-red-500/30 text-xs font-black uppercase tracking-wider">
-                <span>🇻🇳</span>
-                <span>{t.teamStoryBadge}</span>
-              </div>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-white flex items-center gap-2">
-                <span>{t.teamStoryTitle}</span>
-              </h2>
-            </div>
-
-            <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-2xl border border-white/10 backdrop-blur-md self-start sm:self-auto">
-              <Award className="w-5 h-5 text-amber-400" />
-              <span className="text-xs font-mono font-bold text-slate-200">
-                VIQRC #79813J
-              </span>
-            </div>
-          </div>
-
-          {/* Team Bio & Story */}
-          <div className="space-y-4 text-slate-300 text-xs sm:text-sm md:text-base leading-relaxed">
-            <p>
-              {t.teamStoryDesc}
-            </p>
-          </div>
-
-          {/* Why We Built It Callout */}
-          <div className="bg-white/5 border border-white/10 rounded-3xl p-6 sm:p-8 space-y-4 backdrop-blur-md">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
-                <Flame className="w-5 h-5" />
-              </div>
-              <h3 className="text-lg sm:text-xl font-black text-white">
-                {t.whyWeMadeTitle}
-              </h3>
-            </div>
-
-            <div className="space-y-3.5 text-slate-300 text-xs sm:text-sm leading-relaxed">
-              <p>{t.whyWeMadeP1}</p>
-              <p>{t.whyWeMadeP2}</p>
-              <p>{t.whyWeMadeP3}</p>
-              <p>{t.whyWeMadeP4}</p>
-              <p className="text-cyan-300 font-semibold pt-2 border-t border-white/10">
-                {t.teamStoryClosing}
-              </p>
-            </div>
-          </div>
-
-          {/* 3 Pillars */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-            
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
-              <div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
-                <Sparkles className="w-4 h-4" />
-              </div>
-              <h4 className="font-extrabold text-sm text-white">{t.craftsmanshipTitle}</h4>
-              <p className="text-xs text-slate-400 leading-normal">
-                {t.craftsmanshipP1}
-              </p>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
-              <div className="w-8 h-8 rounded-xl bg-red-500/20 text-red-400 flex items-center justify-center">
-                <Globe2 className="w-4 h-4" />
-              </div>
-              <h4 className="font-extrabold text-sm text-white">{t.vietnamPrideTitle}</h4>
-              <p className="text-xs text-slate-400 leading-normal">
-                {t.vietnamPrideDesc}
-              </p>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
-              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                <ShieldCheck className="w-4 h-4" />
-              </div>
-              <h4 className="font-extrabold text-sm text-white">{t.studentCenteredTitle}</h4>
-              <p className="text-xs text-slate-400 leading-normal">
-                {t.studentCenteredDesc}
-              </p>
-            </div>
-
-          </div>
-
-        </div>
-      </section>
-
-      {/* FINAL CALL TO ACTION BANNER */}
+      {/* 4. FINAL CALL TO ACTION BANNER */}
       <section className="bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 rounded-3xl p-6 sm:p-8 text-center text-slate-950 shadow-lg shadow-cyan-500/20 space-y-4">
         <h3 className="text-xl sm:text-2xl font-black tracking-tight">
           {t.readyToLevelUp}
