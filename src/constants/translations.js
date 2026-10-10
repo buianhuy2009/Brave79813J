@@ -61,6 +61,19 @@ export const translations = {
     catapultBot: "Shooter / Catapult",
     clawBot: "Claw / Arm Bot",
     customBot: "Custom Design",
+    typeManual: "Custom / Manual Input",
+    customRobotPlaceholder: "Type your robot mechanism / name...",
+
+    // History Views & Comparison
+    matchList: "Match List",
+    dailySummary: "Daily Summary",
+    compare: "Compare Runs",
+    selectTwoToCompare: "Select any 2 runs below to compare them side-by-side",
+    comparisonTitle: "Head-to-Head Comparison",
+    clearCompare: "Clear Comparison",
+    dayHighScore: "Day High",
+    dayAvgScore: "Day Avg",
+    runsCount: "runs",
 
     // Match Types
     teamwork: "Teamwork",
@@ -180,6 +193,19 @@ export const translations = {
     catapultBot: "Bắn bóng/hạt (Shooter)",
     clawBot: "Tay gắp (Claw Bot)",
     customBot: "Thiết kế tùy chỉnh",
+    typeManual: "Tự nhập tay",
+    customRobotPlaceholder: "Nhập dạng hoặc cơ cấu robot...",
+
+    // History Views & Comparison
+    matchList: "Danh sách trận",
+    dailySummary: "Tổng kết theo ngày",
+    compare: "So sánh các trận",
+    selectTwoToCompare: "Chọn 2 trận đấu bất kỳ bên dưới để so sánh trực diện",
+    comparisonTitle: "So sánh trực diện 2 trận",
+    clearCompare: "Bỏ chọn",
+    dayHighScore: "Kỷ lục ngày",
+    dayAvgScore: "Điểm TB ngày",
+    runsCount: "trận",
 
     // Match Types
     teamwork: "Đấu liên minh (Teamwork)",

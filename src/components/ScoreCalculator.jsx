@@ -47,7 +47,7 @@ export default function ScoreCalculator({
 
   // Save Modal state
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
-  const [modalMatchType, setModalMatchType] = useState('driving');
+  const [modalMatchType, setModalMatchType] = useState('teamwork');
   const [modalSessionTag, setModalSessionTag] = useState('practice');
   const [modalTeamName, setModalTeamName] = useState('');
   const [modalNotes, setModalNotes] = useState('');
@@ -58,7 +58,7 @@ export default function ScoreCalculator({
   const [modalMatchDate, setModalMatchDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [modalMinorViolations, setModalMinorViolations] = useState(0);
   const [modalMajorViolations, setModalMajorViolations] = useState(0);
-  const [modalRobotType, setModalRobotType] = useState('hero');
+  const [modalRobotType, setModalRobotType] = useState('Hero Bot');
 
   // Sync external loaded state if user restored from history
   useEffect(() => {
@@ -721,17 +721,40 @@ export default function ScoreCalculator({
                     <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">
                       {t.robotType}
                     </label>
-                    <select
-                      value={modalRobotType}
-                      onChange={(e) => setModalRobotType(e.target.value)}
-                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-cyan-500"
-                    >
-                      <option value="hero">{t.heroBot}</option>
-                      <option value="lift">{t.liftBot}</option>
-                      <option value="catapult">{t.catapultBot}</option>
-                      <option value="claw">{t.clawBot}</option>
-                      <option value="custom">{t.customBot}</option>
-                    </select>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        list="robotTypesList"
+                        placeholder={t.customRobotPlaceholder}
+                        value={modalRobotType}
+                        onChange={(e) => setModalRobotType(e.target.value)}
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-cyan-500 font-medium"
+                      />
+                      <datalist id="robotTypesList">
+                        <option value={t.heroBot} />
+                        <option value={t.liftBot} />
+                        <option value={t.catapultBot} />
+                        <option value={t.clawBot} />
+                        <option value={t.customBot} />
+                      </datalist>
+                    </div>
+                    {/* Quick suggestion pills */}
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {[t.heroBot, t.liftBot, t.catapultBot, t.clawBot].map(item => (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() => setModalRobotType(item)}
+                          className={`text-[11px] px-2.5 py-1 rounded-lg border transition-all ${
+                            modalRobotType === item
+                              ? 'bg-cyan-500 text-slate-950 font-bold border-cyan-500 shadow-sm'
+                              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-slate-400'
+                          }`}
+                        >
+                          {item}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Minor & Major Violations */}
