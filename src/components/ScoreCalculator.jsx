@@ -10,47 +10,47 @@ import {
   Layers, 
   Grid, 
   Clock, 
-  Tag, 
-  Info,
-  ChevronDown,
-  ChevronUp,
-  Plus,
-  Minus
+  Plus, 
+  Minus,
+  X
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { 
   GAME_INFO, 
-  MATCH_TYPES, 
-  SESSION_TAGS, 
   INITIAL_QUICK_STATE, 
   INITIAL_DETAILED_STATE,
   calculateQuickScore,
   calculateDetailedScore
 } from '../constants/rules';
+import { translations } from '../constants/translations';
 import { saveMatch, getSavedMatches } from '../utils/storage';
 
 export default function ScoreCalculator({ 
   skillsStopTime, 
   setSkillsStopTime, 
   onMatchSaved,
-  externalLoadedState 
+  externalLoadedState,
+  lang = 'en'
 }) {
-  // Scoring mode: 'quick' or 'detailed'
+  const t = translations[lang] || translations.en;
+
+  // Scoring mode: 'detailed' (default) or 'quick'
   const [mode, setMode] = useState('detailed');
 
-  // Match metadata
-  const [matchType, setMatchType] = useState('driving');
-  const [sessionTag, setSessionTag] = useState('practice');
-  const [matchNotes, setMatchNotes] = useState('');
-  const [teamName, setTeamName] = useState('');
-
-  // States
+  // Calculator states
   const [quickState, setQuickState] = useState(INITIAL_QUICK_STATE);
   const [detailedState, setDetailedState] = useState(INITIAL_DETAILED_STATE);
 
-  // Notification states
+  // Notifications
   const [copied, setCopied] = useState(false);
-  const [savedSuccess, setSavedSuccess] = useState(false);
+
+  // Save Modal state
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [modalMatchType, setModalMatchType] = useState('driving');
+  const [modalSessionTag, setModalSessionTag] = useState('practice');
+  const [modalTeamName, setModalTeamName] = useState('');
+  const [modalNotes, setModalNotes] = useState('');
+  const [modalStopTime, setModalStopTime] = useState(skillsStopTime || 0);
 
   // Sync external loaded state if user restored from history
   useEffect(() => {
@@ -62,13 +62,21 @@ export default function ScoreCalculator({
         setMode('detailed');
         setDetailedState(externalLoadedState.detailedState);
       }
-      if (externalLoadedState.matchType) setMatchType(externalLoadedState.matchType);
-      if (externalLoadedState.sessionTag) setSessionTag(externalLoadedState.sessionTag);
-      if (externalLoadedState.skillsStopTime !== undefined) setSkillsStopTime(externalLoadedState.skillsStopTime);
-      if (externalLoadedState.matchNotes) setMatchNotes(externalLoadedState.matchNotes);
-      if (externalLoadedState.teamName) setTeamName(externalLoadedState.teamName);
+      if (externalLoadedState.matchType) setModalMatchType(externalLoadedState.matchType);
+      if (externalLoadedState.sessionTag) setModalSessionTag(externalLoadedState.sessionTag);
+      if (externalLoadedState.skillsStopTime !== undefined) {
+        setSkillsStopTime(externalLoadedState.skillsStopTime);
+        setModalStopTime(externalLoadedState.skillsStopTime);
+      }
+      if (externalLoadedState.matchNotes) setModalNotes(externalLoadedState.matchNotes);
+      if (externalLoadedState.teamName) setModalTeamName(externalLoadedState.teamName);
     }
   }, [externalLoadedState]);
+
+  // Keep modal stop time updated when external stop time changes from timer
+  useEffect(() => {
+    setModalStopTime(skillsStopTime || 0);
+  }, [skillsStopTime]);
 
   // Compute scores based on current mode
   const quickResult = calculateQuickScore(quickState);
@@ -78,7 +86,7 @@ export default function ScoreCalculator({
   const currentTotalScore = currentResult.totalPoints;
   const currentTotalBags = currentResult.totalBags;
 
-  // Bag inventory counts for detailed mode
+  // Bag inventory counts
   const redBagsUsed = mode === 'detailed' ? detailedResult.redBags : (quickState.redBags || 0);
   const blueBagsUsed = mode === 'detailed' ? detailedResult.blueBags : (quickState.blueBags || 0);
   const yellowBagsUsed = mode === 'detailed' ? detailedResult.yellowBags : (quickState.l4 || 0);
@@ -101,19 +109,15 @@ export default function ScoreCalculator({
   };
 
   const handleReset = () => {
-    if (window.confirm("Reset calculator to 0?")) {
+    if (window.confirm(t.resetConfirm)) {
       setQuickState(INITIAL_QUICK_STATE);
       setDetailedState(INITIAL_DETAILED_STATE);
       setSkillsStopTime(0);
-      setMatchNotes('');
+      setModalStopTime(0);
     }
   };
 
   const handleMaxPreset = () => {
-    // Maximum legal theoretical score:
-    // All 6 Yellow bags on L4 = 6 * 16 = 96
-    // 16 Red bags and 16 Blue bags all on L3 = 32 * 12 = 384
-    // Total = 480 points!
     if (mode === 'detailed') {
       setDetailedState({
         floorRed: 0,
@@ -144,26 +148,31 @@ export default function ScoreCalculator({
     }
   };
 
-  const handleSave = () => {
+  const handleOpenSaveModal = () => {
+    setModalStopTime(skillsStopTime || 0);
+    setIsSaveModalOpen(true);
+  };
+
+  const handleConfirmSave = (e) => {
+    e.preventDefault();
     const saved = getSavedMatches();
     const existingHigh = saved.reduce((max, m) => Math.max(max, m.score || 0), 0);
 
     const matchPayload = {
       score: currentTotalScore,
       totalBags: currentTotalBags,
-      matchType,
-      sessionTag,
-      teamName: teamName.trim() || 'My Robot',
-      matchNotes: matchNotes.trim(),
-      skillsStopTime: matchType !== 'teamwork' ? Number(skillsStopTime) : 0,
+      matchType: modalMatchType,
+      sessionTag: modalSessionTag,
+      teamName: modalTeamName.trim() || 'My Robot',
+      matchNotes: modalNotes.trim(),
+      skillsStopTime: modalMatchType !== 'teamwork' ? Number(modalStopTime) : 0,
       mode,
       details: mode === 'detailed' ? detailedState : quickState,
       breakdown: currentResult
     };
 
     saveMatch(matchPayload);
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 2500);
+    setIsSaveModalOpen(false);
 
     // Fire celebration if high score
     if (currentTotalScore > 0 && currentTotalScore > existingHigh) {
@@ -182,24 +191,16 @@ export default function ScoreCalculator({
   const handleCopySummary = () => {
     const summaryLines = [
       `🏆 VEX IQ Level Up - Score Summary`,
-      `Match Type: ${MATCH_TYPES.find(t => t.id === matchType)?.label}`,
-      `Session: ${SESSION_TAGS.find(t => t.id === sessionTag)?.label}`,
-      teamName ? `Team: ${teamName}` : null,
       `Total Score: ${currentTotalScore} PTS (${currentTotalBags} Bags)`,
-      matchType !== 'teamwork' && skillsStopTime > 0 ? `Skills Stop Time: ${skillsStopTime}s remaining` : null,
+      skillsStopTime > 0 ? `Stop Time: ${skillsStopTime}s` : null,
       `--- Breakdown ---`,
       mode === 'detailed' 
         ? `L4 Top (Yellow): ${detailedState.l4Yellow} bags (${detailedState.l4Yellow * 16} pts)\n` +
-          `L3 (Red ${detailedState.l3Red}, Blue ${detailedState.l3Blue}, Yellow ${detailedState.l3Yellow}): ${(detailedState.l3Red + detailedState.l3Blue + detailedState.l3Yellow) * 12} pts\n` +
-          `L2 (Red ${detailedState.l2Red}, Blue ${detailedState.l2Blue}, Yellow ${detailedState.l2Yellow}): ${(detailedState.l2Red + detailedState.l2Blue + detailedState.l2Yellow) * 6} pts\n` +
-          `L1 (Red ${detailedState.l1Red}, Blue ${detailedState.l1Blue}, Yellow ${detailedState.l1Yellow}): ${(detailedState.l1Red + detailedState.l1Blue + detailedState.l1Yellow) * 3} pts\n` +
-          `Floor (Red ${detailedState.floorRed}, Blue ${detailedState.floorBlue}, Yellow ${detailedState.floorYellow}): ${detailedState.floorRed + detailedState.floorBlue + detailedState.floorYellow} pts`
-        : `L4: ${quickState.l4} bags (${quickState.l4 * 16} pts)\n` +
-          `L3: ${quickState.l3} bags (${quickState.l3 * 12} pts)\n` +
-          `L2: ${quickState.l2} bags (${quickState.l2 * 6} pts)\n` +
-          `L1: ${quickState.l1} bags (${quickState.l1 * 3} pts)\n` +
-          `Floor: ${quickState.floor} bags (${quickState.floor * 1} pts)`,
-      matchNotes ? `Notes: "${matchNotes}"` : null
+          `L3: Red ${detailedState.l3Red}, Blue ${detailedState.l3Blue}, Yellow ${detailedState.l3Yellow}\n` +
+          `L2: Red ${detailedState.l2Red}, Blue ${detailedState.l2Blue}, Yellow ${detailedState.l2Yellow}\n` +
+          `L1: Red ${detailedState.l1Red}, Blue ${detailedState.l1Blue}, Yellow ${detailedState.l1Yellow}\n` +
+          `Floor: Red ${detailedState.floorRed}, Blue ${detailedState.floorBlue}, Yellow ${detailedState.floorYellow}`
+        : `L4: ${quickState.l4} bags\nL3: ${quickState.l3} bags\nL2: ${quickState.l2} bags\nL1: ${quickState.l1} bags\nFloor: ${quickState.floor} bags`
     ].filter(Boolean).join('\n');
 
     navigator.clipboard.writeText(summaryLines);
@@ -209,609 +210,322 @@ export default function ScoreCalculator({
 
   return (
     <div className="space-y-6">
-      {/* Top Banner: Mode & Match Configuration */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 md:p-5 shadow-xl">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          {/* Mode Switcher */}
-          <div>
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">
-              Scoring Layout Mode
-            </span>
-            <div className="inline-flex p-1 bg-slate-950 border border-slate-800 rounded-xl">
-              <button
-                type="button"
-                onClick={() => setMode('detailed')}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                  mode === 'detailed'
-                    ? 'bg-cyan-500 text-slate-950 font-bold shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <Grid className="w-4 h-4" />
-                <span>Detailed Split (Red / Blue / Yellow)</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode('quick')}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                  mode === 'quick'
-                    ? 'bg-cyan-500 text-slate-950 font-bold shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <Layers className="w-4 h-4" />
-                <span>Quick Levels (L1 - L4)</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Match Type Pills */}
-          <div>
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">
-              Match Category
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {MATCH_TYPES.map(t => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setMatchType(t.id)}
-                  className={`px-3 py-1.5 rounded-xl text-xs md:text-sm font-semibold transition-all border ${
-                    matchType === t.id
-                      ? 'bg-blue-600/30 border-blue-500 text-blue-300 shadow-sm'
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-300'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-          </div>
+      
+      {/* Top Bar: Mode Switcher */}
+      <div className="flex items-center justify-between">
+        <div className="inline-flex p-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
+          <button
+            type="button"
+            onClick={() => setMode('detailed')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+              mode === 'detailed'
+                ? 'bg-cyan-500 text-slate-950 font-bold shadow-md'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+            }`}
+          >
+            <Grid className="w-4 h-4" />
+            <span>{t.detailedMode}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('quick')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+              mode === 'quick'
+                ? 'bg-cyan-500 text-slate-950 font-bold shadow-md'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span>{t.quickMode}</span>
+          </button>
         </div>
 
-        {/* Second Row: Session Tag & Notes & Skills Stop Time */}
-        <div className="mt-4 pt-4 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* Activity Tag */}
-          <div>
-            <label className="text-xs font-medium text-slate-400 block mb-1 flex items-center gap-1.5">
-              <Tag className="w-3.5 h-3.5 text-cyan-400" />
-              Activity Tag
-            </label>
-            <select
-              value={sessionTag}
-              onChange={(e) => setSessionTag(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500"
-            >
-              {SESSION_TAGS.map(tag => (
-                <option key={tag.id} value={tag.id}>
-                  {tag.label}
-                </option>
-              ))}
-            </select>
+        {/* Small Stop Time Indicator if timer captured one */}
+        {skillsStopTime > 0 && (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-mono font-bold">
+            <Clock className="w-3.5 h-3.5" />
+            <span>{t.stopTime}: {skillsStopTime}s</span>
           </div>
-
-          {/* Team / Robot ID */}
-          <div>
-            <label className="text-xs font-medium text-slate-400 block mb-1">
-              Team / Robot Note
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. 20160M - HeroBot"
-              value={teamName}
-              onChange={(e) => setTeamName(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500"
-            />
-          </div>
-
-          {/* Skills Stop Time (for Skills runs) */}
-          <div>
-            <label className="text-xs font-medium text-slate-400 block mb-1 flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-amber-400" />
-              Skills Stop Time (seconds left)
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min="0"
-                max="60"
-                value={skillsStopTime}
-                onChange={(e) => setSkillsStopTime(Math.max(0, Math.min(60, Number(e.target.value) || 0)))}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-amber-300 font-mono font-bold focus:outline-none focus:border-amber-500"
-              />
-              <span className="text-xs text-slate-500 font-mono">sec</span>
-            </div>
-          </div>
-
-          {/* Quick Notes */}
-          <div>
-            <label className="text-xs font-medium text-slate-400 block mb-1">
-              Test Run Notes
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. new intake roller test"
-              value={matchNotes}
-              onChange={(e) => setMatchNotes(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500"
-            />
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Hero Score Display Banner */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl">
+      <div className="relative overflow-hidden bg-white dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold uppercase tracking-wider mb-1">
+            <div className="flex items-center gap-2 text-cyan-600 dark:text-cyan-400 text-xs font-bold uppercase tracking-wider mb-1">
               <Trophy className="w-4 h-4" />
-              <span>Official Calculated Score</span>
+              <span>{t.points}</span>
             </div>
             <div className="flex items-baseline gap-3">
-              <span className="text-5xl md:text-7xl font-black font-mono tracking-tight text-white drop-shadow-md">
+              <span className="text-6xl md:text-8xl font-black font-mono tracking-tight text-slate-900 dark:text-white drop-shadow-sm">
                 {currentTotalScore}
               </span>
               <span className="text-xl md:text-2xl font-bold text-slate-400">
-                POINTS
+                {t.points}
               </span>
             </div>
-            <div className="mt-2 flex flex-wrap items-center gap-3 text-xs md:text-sm text-slate-400">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60 font-medium">
-                Total Bags: <strong className="text-slate-200">{currentTotalBags}</strong> / 38
+            <div className="mt-2 flex items-center gap-2 text-xs md:text-sm text-slate-500 dark:text-slate-400">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60 font-semibold text-slate-700 dark:text-slate-300">
+                {t.totalBags}: <strong>{currentTotalBags}</strong> / 38
               </span>
-              {matchType !== 'teamwork' && skillsStopTime > 0 && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 font-medium">
-                  Stop Time: <strong>{skillsStopTime}s</strong>
-                </span>
-              )}
             </div>
           </div>
 
-          {/* Action Button Strip */}
+          {/* Action Buttons */}
           <div className="flex flex-wrap items-center gap-2.5">
             <button
               type="button"
-              onClick={handleSave}
-              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-emerald-500/20"
+              onClick={handleOpenSaveModal}
+              className="flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white dark:text-slate-950 font-extrabold hover:brightness-105 active:scale-95 transition-all shadow-lg shadow-emerald-500/25"
             >
-              {savedSuccess ? (
-                <>
-                  <Check className="w-5 h-5" />
-                  <span>Saved!</span>
-                </>
-              ) : (
-                <>
-                  <Save className="w-5 h-5" />
-                  <span>Save Match</span>
-                </>
-              )}
+              <Save className="w-5 h-5" />
+              <span>{t.saveMatch}</span>
             </button>
 
             <button
               type="button"
               onClick={handleCopySummary}
-              className="flex items-center gap-2 px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-200 font-semibold transition-all active:scale-95"
-              title="Copy score breakdown to clipboard"
+              className="flex items-center gap-2 px-4 py-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold transition-all active:scale-95 text-sm"
+              title="Copy"
             >
-              {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-              <span>{copied ? 'Copied' : 'Copy'}</span>
+              {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+              <span>{copied ? t.copied : t.copy}</span>
             </button>
 
             <button
               type="button"
               onClick={handleReset}
-              className="flex items-center gap-2 px-4 py-3 rounded-xl bg-slate-800/80 border border-slate-700/80 hover:bg-rose-900/40 hover:text-rose-300 hover:border-rose-500/50 text-slate-300 transition-all active:scale-95"
-              title="Reset counters to 0"
+              className="flex items-center gap-2 px-4 py-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-300 text-slate-600 dark:text-slate-300 font-medium transition-all active:scale-95 text-sm"
+              title="Reset"
             >
               <RotateCcw className="w-4 h-4" />
-              <span>Reset</span>
+              <span>{t.reset}</span>
             </button>
 
             <button
               type="button"
               onClick={handleMaxPreset}
-              className="flex items-center gap-2 px-3 py-3 rounded-xl bg-slate-800/60 border border-slate-700/60 hover:bg-cyan-950/40 hover:text-cyan-300 text-slate-400 text-xs transition-all"
-              title="Set maximum possible score"
+              className="flex items-center gap-1.5 px-3 py-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 hover:bg-amber-50 dark:hover:bg-amber-950/40 text-amber-600 dark:text-amber-400 text-xs font-bold transition-all"
+              title="Max Score Preset"
             >
-              <Sparkles className="w-4 h-4 text-yellow-400" />
-              <span>Max</span>
+              <Sparkles className="w-4 h-4" />
+              <span>{t.maxPreset}</span>
             </button>
           </div>
         </div>
 
-        {/* Capacity Warning Alert if over 38 bags or specific limits */}
+        {/* Warning if over 38 */}
         {currentTotalBags > 38 && (
-          <div className="mt-4 p-3 bg-rose-500/20 border border-rose-500/40 rounded-xl flex items-center gap-3 text-rose-300 text-xs md:text-sm">
-            <AlertTriangle className="w-5 h-5 flex-shrink-0 text-rose-400" />
-            <span>
-              <strong>Warning:</strong> The field only has 38 Bean Bags in total. Currently {currentTotalBags} bags are counted.
-            </span>
+          <div className="mt-4 p-3 bg-rose-50 dark:bg-rose-500/20 border border-rose-200 dark:border-rose-500/40 rounded-2xl flex items-center gap-3 text-rose-700 dark:text-rose-300 text-xs">
+            <AlertTriangle className="w-5 h-5 flex-shrink-0 text-rose-500" />
+            <span>{t.over38Warning}</span>
           </div>
         )}
       </div>
 
-      {/* Detailed Mode Scoring Sections (Split Red vs Blue vs Yellow) */}
+      {/* DETAILED MODE (Red Pyramid vs Blue Pyramid vs Yellow) */}
       {mode === 'detailed' ? (
         <div className="space-y-6">
-          {/* Top Level 4 Goal (YELLOW ONLY - 16 PTS) */}
-          <div className="bg-slate-900/90 border-2 border-yellow-500/40 rounded-2xl p-5 shadow-lg relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/10 rounded-full blur-2xl pointer-events-none" />
-            
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          
+          {/* L4 Top Goal (Yellow ONLY - 16 PTS) */}
+          <div className="bg-amber-50/60 dark:bg-slate-900/90 border-2 border-amber-400 dark:border-yellow-500/40 rounded-3xl p-5 md:p-6 shadow-md relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-yellow-500/20 text-yellow-300 border border-yellow-500/40">
-                    LEVEL 4 GOAL
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-500 text-slate-950 shadow-sm">
+                    L4
                   </span>
-                  <span className="text-xs font-mono text-yellow-400 font-bold">16 PTS EACH</span>
+                  <span className="text-xs font-mono text-amber-700 dark:text-yellow-400 font-extrabold">
+                    16 {t.pts}
+                  </span>
                 </div>
-                <h3 className="text-lg font-bold text-white mt-1">
-                  Top L4 Goal <span className="text-xs font-normal text-slate-400">(Yellow Bean Bags ONLY — Max 6)</span>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white mt-1">
+                  {t.l4Goal}
                 </h3>
+                <p className="text-xs text-amber-800/80 dark:text-slate-400 font-medium">
+                  {t.l4Subtitle}
+                </p>
               </div>
 
               <div className="flex items-center gap-3">
-                <span className="text-sm font-mono text-yellow-400 font-bold">
-                  {detailedState.l4Yellow * 16} PTS
+                <span className="text-sm font-mono text-amber-700 dark:text-yellow-400 font-bold">
+                  {detailedState.l4Yellow * 16} {t.pts}
                 </span>
-                <div className="flex items-center bg-slate-950 border border-yellow-500/50 rounded-xl p-1">
+                <div className="flex items-center bg-white dark:bg-slate-950 border border-amber-300 dark:border-yellow-500/50 rounded-2xl p-1 shadow-sm">
                   <button
                     type="button"
                     onClick={() => updateDetailed('l4Yellow', -1)}
                     disabled={detailedState.l4Yellow <= 0}
-                    className="w-10 h-10 flex items-center justify-center rounded-lg bg-slate-900 text-slate-200 hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none active:scale-95"
+                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 disabled:opacity-30 active:scale-95 transition-all"
                   >
                     <Minus className="w-4 h-4" />
                   </button>
-                  <span className="w-12 text-center font-mono text-xl font-bold text-yellow-300">
+                  <span className="w-12 text-center font-mono text-xl font-black text-amber-600 dark:text-yellow-300">
                     {detailedState.l4Yellow}
                   </span>
                   <button
                     type="button"
                     onClick={() => updateDetailed('l4Yellow', 1)}
                     disabled={detailedState.l4Yellow >= 6}
-                    className="w-10 h-10 flex items-center justify-center rounded-lg bg-yellow-500 text-slate-950 font-bold hover:bg-yellow-400 disabled:opacity-30 disabled:pointer-events-none active:scale-95"
+                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-bold hover:bg-amber-400 disabled:opacity-30 active:scale-95 transition-all shadow-sm"
                   >
                     <Plus className="w-4 h-4" />
                   </button>
                 </div>
               </div>
             </div>
-            
-            <p className="text-xs text-slate-400">
-              Per rule <strong className="text-yellow-400">&lt;SC5&gt;</strong>: Only yellow Bean Bags count as scored on the L4 Goal. Red or blue bags cannot score on L4.
-            </p>
           </div>
 
-          {/* Goal Grids: Red Pyramid & Blue Pyramid Side by Side */}
+          {/* Red & Blue Pyramids */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
-            {/* RED PYRAMID & FLOOR GOAL */}
-            <div className="bg-slate-900/90 border border-red-500/30 rounded-2xl p-5 shadow-lg">
-              <div className="flex items-center justify-between border-b border-red-500/20 pb-3 mb-4">
+            {/* RED PYRAMID */}
+            <div className="bg-red-50/40 dark:bg-slate-900/90 border border-red-200 dark:border-red-500/30 rounded-3xl p-5 md:p-6 shadow-md">
+              <div className="flex items-center justify-between border-b border-red-200 dark:border-red-500/20 pb-3 mb-4">
                 <div className="flex items-center gap-2">
                   <div className="w-3.5 h-3.5 rounded-full bg-red-500 shadow-sm shadow-red-500/50" />
-                  <h3 className="font-bold text-white text-base">Red Pyramid & Floor Goal</h3>
+                  <h3 className="font-bold text-slate-900 dark:text-white text-base">{t.redPyramid}</h3>
                 </div>
-                <span className="text-xs font-mono px-2 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/30 font-semibold">
-                  Red & Yellow Bags
+                <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300 font-bold">
+                  Red & Yellow
                 </span>
               </div>
 
-              <div className="space-y-4">
-                {/* L3 Red (12 pts) */}
-                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/70 border border-slate-800">
-                  <div>
-                    <div className="text-xs font-bold text-red-400">L3 GOAL (12 PTS)</div>
-                    <div className="text-xs text-slate-400">Highest pyramid step</div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-mono text-slate-400 font-bold">
-                      {detailedState.l3Red * 12} pts
-                    </span>
-                    <div className="flex items-center bg-slate-900 border border-slate-700 rounded-lg p-0.5">
-                      <button
-                        type="button"
-                        onClick={() => updateDetailed('l3Red', -1)}
-                        className="w-8 h-8 flex items-center justify-center rounded text-slate-300 hover:bg-slate-800 active:scale-90"
-                      >
-                        <Minus className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="w-9 text-center font-mono font-bold text-red-400">
-                        {detailedState.l3Red}
+              <div className="space-y-3.5">
+                {[
+                  { level: t.l3Goal, key: 'l3Red', pts: 12 },
+                  { level: t.l2Goal, key: 'l2Red', pts: 6 },
+                  { level: t.l1Goal, key: 'l1Red', pts: 3 },
+                  { level: t.floorGoal, key: 'floorRed', pts: 1 },
+                ].map(item => (
+                  <div key={item.key} className="flex items-center justify-between p-3 rounded-2xl bg-white dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <div>
+                      <div className="text-xs font-bold text-red-600 dark:text-red-400">{item.level}</div>
+                      <div className="text-[11px] text-slate-500 font-mono font-semibold">{item.pts} {t.pts}</div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-mono text-slate-400 font-bold">
+                        {(detailedState[item.key] || 0) * item.pts} {t.pts}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => updateDetailed('l3Red', 1)}
-                        className="w-8 h-8 flex items-center justify-center rounded bg-red-600/80 text-white hover:bg-red-500 active:scale-90"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-0.5">
+                        <button
+                          type="button"
+                          onClick={() => updateDetailed(item.key, -1)}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 active:scale-90"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="w-9 text-center font-mono font-extrabold text-red-600 dark:text-red-400">
+                          {detailedState[item.key] || 0}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => updateDetailed(item.key, 1)}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-600 text-white font-bold hover:bg-red-500 active:scale-90 shadow-sm"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-
-                {/* L2 Red (6 pts) */}
-                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/70 border border-slate-800">
-                  <div>
-                    <div className="text-xs font-bold text-red-400">L2 GOAL (6 PTS)</div>
-                    <div className="text-xs text-slate-400">Middle pyramid step</div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-mono text-slate-400 font-bold">
-                      {detailedState.l2Red * 6} pts
-                    </span>
-                    <div className="flex items-center bg-slate-900 border border-slate-700 rounded-lg p-0.5">
-                      <button
-                        type="button"
-                        onClick={() => updateDetailed('l2Red', -1)}
-                        className="w-8 h-8 flex items-center justify-center rounded text-slate-300 hover:bg-slate-800 active:scale-90"
-                      >
-                        <Minus className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="w-9 text-center font-mono font-bold text-red-400">
-                        {detailedState.l2Red}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => updateDetailed('l2Red', 1)}
-                        className="w-8 h-8 flex items-center justify-center rounded bg-red-600/80 text-white hover:bg-red-500 active:scale-90"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* L1 Red (3 pts) */}
-                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/70 border border-slate-800">
-                  <div>
-                    <div className="text-xs font-bold text-red-400">L1 GOAL (3 PTS)</div>
-                    <div className="text-xs text-slate-400">Lowest pyramid step</div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-mono text-slate-400 font-bold">
-                      {detailedState.l1Red * 3} pts
-                    </span>
-                    <div className="flex items-center bg-slate-900 border border-slate-700 rounded-lg p-0.5">
-                      <button
-                        type="button"
-                        onClick={() => updateDetailed('l1Red', -1)}
-                        className="w-8 h-8 flex items-center justify-center rounded text-slate-300 hover:bg-slate-800 active:scale-90"
-                      >
-                        <Minus className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="w-9 text-center font-mono font-bold text-red-400">
-                        {detailedState.l1Red}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => updateDetailed('l1Red', 1)}
-                        className="w-8 h-8 flex items-center justify-center rounded bg-red-600/80 text-white hover:bg-red-500 active:scale-90"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Floor Goal Red (1 pt) */}
-                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/70 border border-slate-800">
-                  <div>
-                    <div className="text-xs font-bold text-red-400">RED FLOOR GOAL (1 PT)</div>
-                    <div className="text-xs text-slate-400">Inside red floor boundary</div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-mono text-slate-400 font-bold">
-                      {detailedState.floorRed * 1} pts
-                    </span>
-                    <div className="flex items-center bg-slate-900 border border-slate-700 rounded-lg p-0.5">
-                      <button
-                        type="button"
-                        onClick={() => updateDetailed('floorRed', -1)}
-                        className="w-8 h-8 flex items-center justify-center rounded text-slate-300 hover:bg-slate-800 active:scale-90"
-                      >
-                        <Minus className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="w-9 text-center font-mono font-bold text-red-400">
-                        {detailedState.floorRed}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => updateDetailed('floorRed', 1)}
-                        className="w-8 h-8 flex items-center justify-center rounded bg-red-600/80 text-white hover:bg-red-500 active:scale-90"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
 
-            {/* BLUE PYRAMID & FLOOR GOAL */}
-            <div className="bg-slate-900/90 border border-blue-500/30 rounded-2xl p-5 shadow-lg">
-              <div className="flex items-center justify-between border-b border-blue-500/20 pb-3 mb-4">
+            {/* BLUE PYRAMID */}
+            <div className="bg-blue-50/40 dark:bg-slate-900/90 border border-blue-200 dark:border-blue-500/30 rounded-3xl p-5 md:p-6 shadow-md">
+              <div className="flex items-center justify-between border-b border-blue-200 dark:border-blue-500/20 pb-3 mb-4">
                 <div className="flex items-center gap-2">
                   <div className="w-3.5 h-3.5 rounded-full bg-blue-500 shadow-sm shadow-blue-500/50" />
-                  <h3 className="font-bold text-white text-base">Blue Pyramid & Floor Goal</h3>
+                  <h3 className="font-bold text-slate-900 dark:text-white text-base">{t.bluePyramid}</h3>
                 </div>
-                <span className="text-xs font-mono px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 font-semibold">
-                  Blue & Yellow Bags
+                <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 font-bold">
+                  Blue & Yellow
                 </span>
               </div>
 
-              <div className="space-y-4">
-                {/* L3 Blue (12 pts) */}
-                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/70 border border-slate-800">
-                  <div>
-                    <div className="text-xs font-bold text-blue-400">L3 GOAL (12 PTS)</div>
-                    <div className="text-xs text-slate-400">Highest pyramid step</div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-mono text-slate-400 font-bold">
-                      {detailedState.l3Blue * 12} pts
-                    </span>
-                    <div className="flex items-center bg-slate-900 border border-slate-700 rounded-lg p-0.5">
-                      <button
-                        type="button"
-                        onClick={() => updateDetailed('l3Blue', -1)}
-                        className="w-8 h-8 flex items-center justify-center rounded text-slate-300 hover:bg-slate-800 active:scale-90"
-                      >
-                        <Minus className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="w-9 text-center font-mono font-bold text-blue-400">
-                        {detailedState.l3Blue}
+              <div className="space-y-3.5">
+                {[
+                  { level: t.l3Goal, key: 'l3Blue', pts: 12 },
+                  { level: t.l2Goal, key: 'l2Blue', pts: 6 },
+                  { level: t.l1Goal, key: 'l1Blue', pts: 3 },
+                  { level: t.floorGoal, key: 'floorBlue', pts: 1 },
+                ].map(item => (
+                  <div key={item.key} className="flex items-center justify-between p-3 rounded-2xl bg-white dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <div>
+                      <div className="text-xs font-bold text-blue-600 dark:text-blue-400">{item.level}</div>
+                      <div className="text-[11px] text-slate-500 font-mono font-semibold">{item.pts} {t.pts}</div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-mono text-slate-400 font-bold">
+                        {(detailedState[item.key] || 0) * item.pts} {t.pts}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => updateDetailed('l3Blue', 1)}
-                        className="w-8 h-8 flex items-center justify-center rounded bg-blue-600/80 text-white hover:bg-blue-500 active:scale-90"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-0.5">
+                        <button
+                          type="button"
+                          onClick={() => updateDetailed(item.key, -1)}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 active:scale-90"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="w-9 text-center font-mono font-extrabold text-blue-600 dark:text-blue-400">
+                          {detailedState[item.key] || 0}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => updateDetailed(item.key, 1)}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 active:scale-90 shadow-sm"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-
-                {/* L2 Blue (6 pts) */}
-                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/70 border border-slate-800">
-                  <div>
-                    <div className="text-xs font-bold text-blue-400">L2 GOAL (6 PTS)</div>
-                    <div className="text-xs text-slate-400">Middle pyramid step</div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-mono text-slate-400 font-bold">
-                      {detailedState.l2Blue * 6} pts
-                    </span>
-                    <div className="flex items-center bg-slate-900 border border-slate-700 rounded-lg p-0.5">
-                      <button
-                        type="button"
-                        onClick={() => updateDetailed('l2Blue', -1)}
-                        className="w-8 h-8 flex items-center justify-center rounded text-slate-300 hover:bg-slate-800 active:scale-90"
-                      >
-                        <Minus className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="w-9 text-center font-mono font-bold text-blue-400">
-                        {detailedState.l2Blue}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => updateDetailed('l2Blue', 1)}
-                        className="w-8 h-8 flex items-center justify-center rounded bg-blue-600/80 text-white hover:bg-blue-500 active:scale-90"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* L1 Blue (3 pts) */}
-                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/70 border border-slate-800">
-                  <div>
-                    <div className="text-xs font-bold text-blue-400">L1 GOAL (3 PTS)</div>
-                    <div className="text-xs text-slate-400">Lowest pyramid step</div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-mono text-slate-400 font-bold">
-                      {detailedState.l1Blue * 3} pts
-                    </span>
-                    <div className="flex items-center bg-slate-900 border border-slate-700 rounded-lg p-0.5">
-                      <button
-                        type="button"
-                        onClick={() => updateDetailed('l1Blue', -1)}
-                        className="w-8 h-8 flex items-center justify-center rounded text-slate-300 hover:bg-slate-800 active:scale-90"
-                      >
-                        <Minus className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="w-9 text-center font-mono font-bold text-blue-400">
-                        {detailedState.l1Blue}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => updateDetailed('l1Blue', 1)}
-                        className="w-8 h-8 flex items-center justify-center rounded bg-blue-600/80 text-white hover:bg-blue-500 active:scale-90"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Floor Goal Blue (1 pt) */}
-                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/70 border border-slate-800">
-                  <div>
-                    <div className="text-xs font-bold text-blue-400">BLUE FLOOR GOAL (1 PT)</div>
-                    <div className="text-xs text-slate-400">Inside blue floor boundary</div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-mono text-slate-400 font-bold">
-                      {detailedState.floorBlue * 1} pts
-                    </span>
-                    <div className="flex items-center bg-slate-900 border border-slate-700 rounded-lg p-0.5">
-                      <button
-                        type="button"
-                        onClick={() => updateDetailed('floorBlue', -1)}
-                        className="w-8 h-8 flex items-center justify-center rounded text-slate-300 hover:bg-slate-800 active:scale-90"
-                      >
-                        <Minus className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="w-9 text-center font-mono font-bold text-blue-400">
-                        {detailedState.floorBlue}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => updateDetailed('floorBlue', 1)}
-                        className="w-8 h-8 flex items-center justify-center rounded bg-blue-600/80 text-white hover:bg-blue-500 active:scale-90"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           </div>
 
-          {/* Yellow Bags on Pyramid/Floor (Optional extra yellow bags) */}
-          <div className="bg-slate-900/60 border border-yellow-500/20 rounded-2xl p-4">
+          {/* Additional Yellow Bags Row */}
+          <div className="bg-amber-50/30 dark:bg-slate-900/60 border border-amber-200 dark:border-yellow-500/20 rounded-3xl p-4">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold text-yellow-300 uppercase tracking-wider flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
-                Additional Yellow Bags Placed on Pyramid / Floor (if any)
+              <span className="text-xs font-bold text-amber-700 dark:text-yellow-300 uppercase tracking-wider flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                {t.yellowPlacement}
               </span>
-              <span className="text-xs text-slate-400">
-                Yellow can score on either red or blue goals
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                {t.yellowPlacementSub}
               </span>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
-                { label: 'Yellow on L3', key: 'l3Yellow', pts: 12 },
-                { label: 'Yellow on L2', key: 'l2Yellow', pts: 6 },
-                { label: 'Yellow on L1', key: 'l1Yellow', pts: 3 },
-                { label: 'Yellow on Floor', key: 'floorYellow', pts: 1 },
+                { label: 'Yellow L3', key: 'l3Yellow', pts: 12 },
+                { label: 'Yellow L2', key: 'l2Yellow', pts: 6 },
+                { label: 'Yellow L1', key: 'l1Yellow', pts: 3 },
+                { label: 'Yellow Floor', key: 'floorYellow', pts: 1 },
               ].map(item => (
-                <div key={item.key} className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
+                <div key={item.key} className="bg-white dark:bg-slate-950 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-sm">
                   <div>
-                    <div className="text-xs font-medium text-slate-300">{item.label}</div>
-                    <div className="text-[10px] text-yellow-400 font-mono font-semibold">{item.pts} pts</div>
+                    <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">{item.label}</div>
+                    <div className="text-[10px] text-amber-600 dark:text-yellow-400 font-mono font-bold">{item.pts} {t.pts}</div>
                   </div>
-                  <div className="flex items-center bg-slate-900 rounded-lg p-0.5 border border-slate-700">
+                  <div className="flex items-center bg-slate-50 dark:bg-slate-900 rounded-xl p-0.5 border border-slate-200 dark:border-slate-700">
                     <button
                       type="button"
                       onClick={() => updateDetailed(item.key, -1)}
-                      className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-white"
+                      className="w-6 h-6 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                     >
                       <Minus className="w-3 h-3" />
                     </button>
-                    <span className="w-6 text-center font-mono text-xs font-bold text-yellow-300">
+                    <span className="w-6 text-center font-mono text-xs font-bold text-amber-600 dark:text-yellow-300">
                       {detailedState[item.key] || 0}
                     </span>
                     <button
                       type="button"
                       onClick={() => updateDetailed(item.key, 1)}
-                      className="w-6 h-6 flex items-center justify-center text-yellow-400 hover:text-yellow-200"
+                      className="w-6 h-6 flex items-center justify-center text-amber-600 dark:text-yellow-400 hover:text-amber-700"
                     >
                       <Plus className="w-3 h-3" />
                     </button>
@@ -822,217 +536,209 @@ export default function ScoreCalculator({
           </div>
         </div>
       ) : (
-        /* Quick Mode: Aggregated Level-by-Level Scoring */
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            
-            {/* L4 Goal (16 pts - Yellow Only) */}
-            <div className="bg-slate-900 border-2 border-yellow-500/50 rounded-2xl p-4 shadow-lg text-center flex flex-col justify-between">
+        /* QUICK MODE */
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
+          {[
+            { level: 'L4 (Yellow)', key: 'l4', pts: 16, border: 'border-amber-400 dark:border-yellow-500/50', text: 'text-amber-600 dark:text-yellow-400', max: 6 },
+            { level: 'L3', key: 'l3', pts: 12, border: 'border-cyan-300 dark:border-cyan-500/40', text: 'text-cyan-600 dark:text-cyan-400' },
+            { level: 'L2', key: 'l2', pts: 6, border: 'border-blue-300 dark:border-blue-500/40', text: 'text-blue-600 dark:text-blue-400' },
+            { level: 'L1', key: 'l1', pts: 3, border: 'border-emerald-300 dark:border-emerald-500/40', text: 'text-emerald-600 dark:text-emerald-400' },
+            { level: 'Floor', key: 'floor', pts: 1, border: 'border-slate-300 dark:border-slate-700', text: 'text-slate-700 dark:text-slate-200' },
+          ].map(item => (
+            <div key={item.key} className={`bg-white dark:bg-slate-900 border ${item.border} rounded-3xl p-4 text-center shadow-md flex flex-col justify-between`}>
               <div>
-                <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-yellow-500/20 text-yellow-300 border border-yellow-500/40">
-                  L4 GOAL
-                </span>
-                <div className="text-2xl font-mono font-black text-yellow-400 mt-2">16 PTS</div>
-                <div className="text-xs text-slate-400 mt-0.5">Top Goal (Yellow)</div>
+                <span className="text-xs font-black uppercase text-slate-500 dark:text-slate-400">{item.level}</span>
+                <div className={`text-2xl font-mono font-black ${item.text} mt-1`}>
+                  {item.pts} {t.pts}
+                </div>
               </div>
               <div className="mt-4">
-                <div className="text-sm font-mono font-bold text-white mb-2">
-                  {quickState.l4 * 16} pts
+                <div className="text-xs font-mono font-bold text-slate-400 mb-2">
+                  {(quickState[item.key] || 0) * item.pts} {t.pts}
                 </div>
-                <div className="flex items-center justify-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                <div className="flex items-center justify-center gap-1 bg-slate-50 dark:bg-slate-950 p-1 rounded-2xl border border-slate-200 dark:border-slate-800">
                   <button
                     type="button"
-                    onClick={() => updateQuick('l4', -1)}
-                    className="w-9 h-9 rounded-lg bg-slate-900 text-slate-300 hover:bg-slate-800 flex items-center justify-center"
+                    onClick={() => updateQuick(item.key, -1)}
+                    className="w-9 h-9 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 flex items-center justify-center shadow-sm"
                   >
                     <Minus className="w-4 h-4" />
                   </button>
-                  <span className="w-10 font-mono text-lg font-bold text-yellow-300">
-                    {quickState.l4}
+                  <span className={`w-9 font-mono text-lg font-bold ${item.text}`}>
+                    {quickState[item.key] || 0}
                   </span>
                   <button
                     type="button"
-                    onClick={() => updateQuick('l4', 1)}
-                    disabled={quickState.l4 >= 6}
-                    className="w-9 h-9 rounded-lg bg-yellow-500 text-slate-950 font-bold hover:bg-yellow-400 flex items-center justify-center"
+                    onClick={() => updateQuick(item.key, 1)}
+                    disabled={item.max && (quickState[item.key] || 0) >= item.max}
+                    className="w-9 h-9 rounded-xl bg-cyan-500 text-slate-950 font-bold hover:bg-cyan-400 flex items-center justify-center shadow-sm disabled:opacity-30"
                   >
                     <Plus className="w-4 h-4" />
                   </button>
                 </div>
               </div>
             </div>
-
-            {/* L3 Goal (12 pts) */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg text-center flex flex-col justify-between">
-              <div>
-                <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
-                  L3 GOAL
-                </span>
-                <div className="text-2xl font-mono font-black text-cyan-400 mt-2">12 PTS</div>
-                <div className="text-xs text-slate-400 mt-0.5">Pyramid Level 3</div>
-              </div>
-              <div className="mt-4">
-                <div className="text-sm font-mono font-bold text-white mb-2">
-                  {quickState.l3 * 12} pts
-                </div>
-                <div className="flex items-center justify-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
-                  <button
-                    type="button"
-                    onClick={() => updateQuick('l3', -1)}
-                    className="w-9 h-9 rounded-lg bg-slate-900 text-slate-300 hover:bg-slate-800 flex items-center justify-center"
-                  >
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <span className="w-10 font-mono text-lg font-bold text-cyan-300">
-                    {quickState.l3}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => updateQuick('l3', 1)}
-                    className="w-9 h-9 rounded-lg bg-cyan-500 text-slate-950 font-bold hover:bg-cyan-400 flex items-center justify-center"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* L2 Goal (6 pts) */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg text-center flex flex-col justify-between">
-              <div>
-                <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40">
-                  L2 GOAL
-                </span>
-                <div className="text-2xl font-mono font-black text-blue-400 mt-2">6 PTS</div>
-                <div className="text-xs text-slate-400 mt-0.5">Pyramid Level 2</div>
-              </div>
-              <div className="mt-4">
-                <div className="text-sm font-mono font-bold text-white mb-2">
-                  {quickState.l2 * 6} pts
-                </div>
-                <div className="flex items-center justify-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
-                  <button
-                    type="button"
-                    onClick={() => updateQuick('l2', -1)}
-                    className="w-9 h-9 rounded-lg bg-slate-900 text-slate-300 hover:bg-slate-800 flex items-center justify-center"
-                  >
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <span className="w-10 font-mono text-lg font-bold text-blue-300">
-                    {quickState.l2}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => updateQuick('l2', 1)}
-                    className="w-9 h-9 rounded-lg bg-blue-500 text-white font-bold hover:bg-blue-400 flex items-center justify-center"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* L1 Goal (3 pts) */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg text-center flex flex-col justify-between">
-              <div>
-                <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                  L1 GOAL
-                </span>
-                <div className="text-2xl font-mono font-black text-emerald-400 mt-2">3 PTS</div>
-                <div className="text-xs text-slate-400 mt-0.5">Pyramid Level 1</div>
-              </div>
-              <div className="mt-4">
-                <div className="text-sm font-mono font-bold text-white mb-2">
-                  {quickState.l1 * 3} pts
-                </div>
-                <div className="flex items-center justify-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
-                  <button
-                    type="button"
-                    onClick={() => updateQuick('l1', -1)}
-                    className="w-9 h-9 rounded-lg bg-slate-900 text-slate-300 hover:bg-slate-800 flex items-center justify-center"
-                  >
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <span className="w-10 font-mono text-lg font-bold text-emerald-300">
-                    {quickState.l1}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => updateQuick('l1', 1)}
-                    className="w-9 h-9 rounded-lg bg-emerald-500 text-slate-950 font-bold hover:bg-emerald-400 flex items-center justify-center"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Floor Goal (1 pt) */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg text-center flex flex-col justify-between">
-              <div>
-                <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-700 text-slate-300 border border-slate-600">
-                  FLOOR
-                </span>
-                <div className="text-2xl font-mono font-black text-slate-200 mt-2">1 PT</div>
-                <div className="text-xs text-slate-400 mt-0.5">Floor Goal Boundary</div>
-              </div>
-              <div className="mt-4">
-                <div className="text-sm font-mono font-bold text-white mb-2">
-                  {quickState.floor * 1} pts
-                </div>
-                <div className="flex items-center justify-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
-                  <button
-                    type="button"
-                    onClick={() => updateQuick('floor', -1)}
-                    className="w-9 h-9 rounded-lg bg-slate-900 text-slate-300 hover:bg-slate-800 flex items-center justify-center"
-                  >
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <span className="w-10 font-mono text-lg font-bold text-slate-200">
-                    {quickState.floor}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => updateQuick('floor', 1)}
-                    className="w-9 h-9 rounded-lg bg-slate-200 text-slate-950 font-bold hover:bg-white flex items-center justify-center"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
       )}
 
-      {/* Bag Inventory Monitor */}
-      <div className="bg-slate-950/80 border border-slate-800/80 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2 text-xs text-slate-400">
-          <Info className="w-4 h-4 text-cyan-400 flex-shrink-0" />
-          <span>Field Object Quotas:</span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3 text-xs font-mono font-bold">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
-            <span>Red: {redBagsUsed} / 16</span>
-          </div>
-
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-300">
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-            <span>Blue: {blueBagsUsed} / 16</span>
-          </div>
-
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-300">
-            <span className="w-2.5 h-2.5 rounded-full bg-yellow-500" />
-            <span>Yellow: {yellowBagsUsed} / 6</span>
-          </div>
-
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-200">
-            <span>Total: {currentTotalBags} / 38</span>
-          </div>
+      {/* Bag Quotas Bar */}
+      <div className="bg-white dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-sm">
+        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+          {t.totalBags} Quota:
+        </span>
+        <div className="flex flex-wrap items-center gap-2.5 text-xs font-mono font-bold">
+          <span className="px-3 py-1 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 text-red-600 dark:text-red-300">
+            {t.quotaRed}: {redBagsUsed} / 16
+          </span>
+          <span className="px-3 py-1 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 text-blue-600 dark:text-blue-300">
+            {t.quotaBlue}: {blueBagsUsed} / 16
+          </span>
+          <span className="px-3 py-1 rounded-xl bg-amber-50 dark:bg-yellow-500/10 border border-amber-200 dark:border-yellow-500/30 text-amber-600 dark:text-yellow-300">
+            {t.quotaYellow}: {yellowBagsUsed} / 6
+          </span>
+          <span className="px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200">
+            {t.quotaTotal}: {currentTotalBags} / 38
+          </span>
         </div>
       </div>
+
+      {/* POPUP MODAL: Shown ONLY when user clicks SAVE button */}
+      {isSaveModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl space-y-5 animate-scale-in">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+              <div>
+                <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  <Save className="w-5 h-5 text-emerald-500" />
+                  <span>{t.modalSaveTitle}</span>
+                </h3>
+                <span className="text-xs text-slate-500">
+                  {t.modalScoreLabel}: <strong className="text-cyan-600 dark:text-cyan-400 text-sm font-mono">{currentTotalScore} {t.pts}</strong> ({currentTotalBags} {t.bags})
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSaveModalOpen(false)}
+                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmSave} className="space-y-4">
+              {/* Category */}
+              <div>
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                  {t.modalCategory}
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'driving', label: t.driving },
+                    { id: 'auton', label: t.auton },
+                    { id: 'teamwork', label: t.teamwork }
+                  ].map(cat => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setModalMatchType(cat.id)}
+                      className={`px-2.5 py-2 rounded-xl text-xs font-semibold border transition-all ${
+                        modalMatchType === cat.id
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                          : 'bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Activity Tag */}
+              <div>
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                  {t.modalTag}
+                </label>
+                <select
+                  value={modalSessionTag}
+                  onChange={(e) => setModalSessionTag(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-cyan-500"
+                >
+                  <option value="practice">{t.practice}</option>
+                  <option value="testing">{t.testing}</option>
+                  <option value="debugging">{t.debugging}</option>
+                  <option value="building">{t.building}</option>
+                  <option value="official">{t.official}</option>
+                  <option value="scrimmage">{t.scrimmage}</option>
+                </select>
+              </div>
+
+              {/* Stop Time (Simplified wording as requested) */}
+              <div>
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                  {t.stopTime} (0 - 60s)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    max="60"
+                    value={modalStopTime}
+                    onChange={(e) => setModalStopTime(Math.max(0, Math.min(60, Number(e.target.value) || 0)))}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-amber-600 dark:text-amber-400 font-mono font-bold focus:outline-none focus:border-amber-500"
+                  />
+                  <span className="text-xs text-slate-400 font-mono">sec</span>
+                </div>
+              </div>
+
+              {/* Team Name */}
+              <div>
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                  {t.modalTeam}
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 79813J / Hero Bot"
+                  value={modalTeamName}
+                  onChange={(e) => setModalTeamName(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                  {t.modalNotes}
+                </label>
+                <textarea
+                  rows="2"
+                  placeholder="e.g. tested auton path with new intake"
+                  value={modalNotes}
+                  onChange={(e) => setModalNotes(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setIsSaveModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold text-sm hover:bg-slate-200 dark:hover:bg-slate-700"
+                >
+                  {t.modalCancel}
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 rounded-xl bg-emerald-500 text-white dark:text-slate-950 font-black text-sm hover:bg-emerald-400 shadow-md shadow-emerald-500/20"
+                >
+                  {t.modalSaveButton}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

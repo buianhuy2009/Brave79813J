@@ -8,19 +8,14 @@ import {
   Search, 
   Filter, 
   Calendar, 
-  Tag, 
   Clock, 
   ChevronDown, 
   ChevronUp, 
-  ArrowUpDown, 
-  BarChart3, 
-  Layers, 
-  Check, 
-  X, 
   RotateCcw,
   Cpu,
   Gamepad2,
-  Users
+  Users,
+  X
 } from 'lucide-react';
 import { 
   getSavedMatches, 
@@ -29,9 +24,11 @@ import {
   clearAllSavedMatches, 
   calculateStats 
 } from '../utils/storage';
-import { MATCH_TYPES, SESSION_TAGS } from '../constants/rules';
+import { translations } from '../constants/translations';
 
-export default function MatchHistory({ onLoadMatchIntoCalculator, onNewMatchSaved }) {
+export default function MatchHistory({ onLoadMatchIntoCalculator, onNewMatchSaved, lang = 'en' }) {
+  const t = translations[lang] || translations.en;
+
   const [matches, setMatches] = useState([]);
   const [stats, setStats] = useState(null);
 
@@ -39,12 +36,12 @@ export default function MatchHistory({ onLoadMatchIntoCalculator, onNewMatchSave
   const [filterType, setFilterType] = useState('all');
   const [filterTag, setFilterTag] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('newest'); // 'newest', 'oldest', 'highest', 'lowest', 'stopTime'
+  const [sortBy, setSortBy] = useState('newest');
 
-  // Expansion state for breakdowns
+  // Expansion state
   const [expandedMatchId, setExpandedMatchId] = useState(null);
 
-  // Edit modal state
+  // Edit modal
   const [editingMatch, setEditingMatch] = useState(null);
 
   const loadData = () => {
@@ -58,14 +55,14 @@ export default function MatchHistory({ onLoadMatchIntoCalculator, onNewMatchSave
   }, [onNewMatchSaved]);
 
   const handleDelete = (id) => {
-    if (window.confirm("Are you sure you want to delete this saved match?")) {
+    if (window.confirm(t.deleteConfirm)) {
       deleteSavedMatch(id);
       loadData();
     }
   };
 
   const handleClearAll = () => {
-    if (window.confirm("⚠️ Are you sure you want to delete ALL saved matches? This cannot be undone.")) {
+    if (window.confirm(t.clearConfirm)) {
       clearAllSavedMatches();
       loadData();
     }
@@ -104,22 +101,21 @@ export default function MatchHistory({ onLoadMatchIntoCalculator, onNewMatchSave
         const imported = JSON.parse(event.target?.result);
         if (Array.isArray(imported)) {
           const current = getSavedMatches();
-          // Merge unique by id
           const existingIds = new Set(current.map(m => m.id));
           const newEntries = imported.filter(m => !existingIds.has(m.id));
           const combined = [...newEntries, ...current];
           localStorage.setItem('vexiq_levelup_saved_matches_v1', JSON.stringify(combined));
           loadData();
-          alert(`Successfully imported ${newEntries.length} new matches!`);
+          alert(`Imported ${newEntries.length} matches!`);
         }
       } catch (err) {
-        alert("Invalid JSON match file");
+        alert("Invalid JSON file");
       }
     };
     reader.readAsText(file);
   };
 
-  // Filter and sort logic
+  // Filter & Sort
   const filteredMatches = matches.filter(m => {
     if (filterType !== 'all' && m.matchType !== filterType) return false;
     if (filterTag !== 'all' && m.sessionTag !== filterTag) return false;
@@ -144,83 +140,94 @@ export default function MatchHistory({ onLoadMatchIntoCalculator, onNewMatchSave
 
   const getMatchIcon = (type) => {
     switch (type) {
-      case 'auton': return <Cpu className="w-4 h-4 text-purple-400" />;
-      case 'driving': return <Gamepad2 className="w-4 h-4 text-cyan-400" />;
-      default: return <Users className="w-4 h-4 text-blue-400" />;
+      case 'auton': return <Cpu className="w-4 h-4 text-purple-500" />;
+      case 'driving': return <Gamepad2 className="w-4 h-4 text-cyan-500" />;
+      default: return <Users className="w-4 h-4 text-blue-500" />;
     }
+  };
+
+  const getTagBadge = (tagId) => {
+    const label = t[tagId] || tagId;
+    return (
+      <span className="px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+        {label}
+      </span>
+    );
   };
 
   return (
     <div className="space-y-6">
-      {/* Analytics & Progress Overview Cards */}
+      
+      {/* Stats Cards */}
       {stats && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
-            <span className="text-xs text-slate-400 block font-medium">Total Matches</span>
-            <span className="text-2xl lg:text-3xl font-mono font-black text-white mt-1 block">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-sm">
+            <span className="text-xs text-slate-500 dark:text-slate-400 block font-medium">{t.totalMatches}</span>
+            <span className="text-2xl lg:text-3xl font-mono font-black text-slate-900 dark:text-white mt-1 block">
               {stats.totalMatches}
             </span>
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
-            <span className="text-xs text-slate-400 block font-medium">Average Score</span>
-            <span className="text-2xl lg:text-3xl font-mono font-black text-cyan-400 mt-1 block">
-              {stats.avgScore} <span className="text-xs font-normal text-slate-500">pts</span>
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-sm">
+            <span className="text-xs text-slate-500 dark:text-slate-400 block font-medium">{t.avgScore}</span>
+            <span className="text-2xl lg:text-3xl font-mono font-black text-cyan-600 dark:text-cyan-400 mt-1 block">
+              {stats.avgScore} <span className="text-xs font-normal text-slate-400">{t.pts}</span>
             </span>
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
-            <span className="text-xs text-slate-400 block font-medium">High Score</span>
-            <span className="text-2xl lg:text-3xl font-mono font-black text-yellow-400 mt-1 block">
-              {stats.highScore} <span className="text-xs font-normal text-slate-500">pts</span>
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-sm">
+            <span className="text-xs text-slate-500 dark:text-slate-400 block font-medium">{t.highScore}</span>
+            <span className="text-2xl lg:text-3xl font-mono font-black text-amber-500 mt-1 block">
+              {stats.highScore} <span className="text-xs font-normal text-slate-400">{t.pts}</span>
             </span>
           </div>
 
-          <div className="bg-slate-900 border border-purple-500/30 p-4 rounded-2xl">
-            <span className="text-xs text-purple-400 block font-medium">High Auto Skills</span>
-            <span className="text-2xl lg:text-3xl font-mono font-black text-purple-300 mt-1 block">
-              {stats.highAuton} <span className="text-xs font-normal text-slate-500">pts</span>
+          <div className="bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-500/30 p-4 rounded-2xl shadow-sm">
+            <span className="text-xs text-purple-600 dark:text-purple-400 block font-medium">{t.highAuton}</span>
+            <span className="text-2xl lg:text-3xl font-mono font-black text-purple-600 dark:text-purple-300 mt-1 block">
+              {stats.highAuton} <span className="text-xs font-normal text-slate-400">{t.pts}</span>
             </span>
           </div>
 
-          <div className="bg-slate-900 border border-blue-500/30 p-4 rounded-2xl">
-            <span className="text-xs text-blue-400 block font-medium">High Driver Skills</span>
-            <span className="text-2xl lg:text-3xl font-mono font-black text-blue-300 mt-1 block">
-              {stats.highDriving} <span className="text-xs font-normal text-slate-500">pts</span>
+          <div className="bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-500/30 p-4 rounded-2xl shadow-sm">
+            <span className="text-xs text-blue-600 dark:text-blue-400 block font-medium">{t.highDriving}</span>
+            <span className="text-2xl lg:text-3xl font-mono font-black text-blue-600 dark:text-blue-300 mt-1 block">
+              {stats.highDriving} <span className="text-xs font-normal text-slate-400">{t.pts}</span>
             </span>
           </div>
 
-          <div className="bg-slate-900 border border-emerald-500/30 p-4 rounded-2xl">
-            <span className="text-xs text-emerald-400 block font-medium">High Teamwork</span>
-            <span className="text-2xl lg:text-3xl font-mono font-black text-emerald-300 mt-1 block">
-              {stats.highTeamwork} <span className="text-xs font-normal text-slate-500">pts</span>
+          <div className="bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-500/30 p-4 rounded-2xl shadow-sm">
+            <span className="text-xs text-emerald-600 dark:text-emerald-400 block font-medium">{t.highTeamwork}</span>
+            <span className="text-2xl lg:text-3xl font-mono font-black text-emerald-600 dark:text-emerald-300 mt-1 block">
+              {stats.highTeamwork} <span className="text-xs font-normal text-slate-400">{t.pts}</span>
             </span>
           </div>
         </div>
       )}
 
-      {/* Filter, Search & Action Bar */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 md:p-5 shadow-lg space-y-4">
+      {/* Filter and Search Bar */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-cyan-400" />
-            <h3 className="font-bold text-white text-base">Filter & Organize Saved Runs</h3>
+            <Filter className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+            <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
+              {t.historyTitle}
+            </h3>
           </div>
 
-          {/* Export / Import & Clear buttons */}
           <div className="flex items-center gap-2 flex-wrap text-xs">
             <button
               type="button"
               onClick={handleExportJSON}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white border border-slate-700 hover:bg-slate-700 transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all font-semibold"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Export JSON</span>
+              <span>{t.exportJSON}</span>
             </button>
 
-            <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white border border-slate-700 hover:bg-slate-700 transition-all cursor-pointer">
+            <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all font-semibold cursor-pointer">
               <Upload className="w-3.5 h-3.5" />
-              <span>Import</span>
+              <span>{t.importJSON}</span>
               <input type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
             </label>
 
@@ -228,69 +235,68 @@ export default function MatchHistory({ onLoadMatchIntoCalculator, onNewMatchSave
               <button
                 type="button"
                 onClick={handleClearAll}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-all font-semibold"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>Clear All</span>
+                <span>{t.clearAll}</span>
               </button>
             )}
           </div>
         </div>
 
-        {/* Filter Controls Row */}
+        {/* Filter Inputs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* Search text */}
           <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
+            <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
             <input
               type="text"
-              placeholder="Search by notes or team..."
+              placeholder={t.searchPlaceholder}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500"
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl pl-9 pr-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-cyan-500"
             />
           </div>
 
-          {/* Match Type Filter */}
           <div>
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500"
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-cyan-500"
             >
-              <option value="all">All Match Types</option>
-              {MATCH_TYPES.map(t => (
-                <option key={t.id} value={t.id}>{t.label}</option>
-              ))}
+              <option value="all">{t.allTypes}</option>
+              <option value="driving">{t.driving}</option>
+              <option value="auton">{t.auton}</option>
+              <option value="teamwork">{t.teamwork}</option>
             </select>
           </div>
 
-          {/* Session Tag Filter */}
           <div>
             <select
               value={filterTag}
               onChange={(e) => setFilterTag(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500"
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-cyan-500"
             >
-              <option value="all">All Activities (Testing, Practicing...)</option>
-              {SESSION_TAGS.map(tag => (
-                <option key={tag.id} value={tag.id}>{tag.label}</option>
-              ))}
+              <option value="all">{t.allTags}</option>
+              <option value="practice">{t.practice}</option>
+              <option value="testing">{t.testing}</option>
+              <option value="debugging">{t.debugging}</option>
+              <option value="building">{t.building}</option>
+              <option value="official">{t.official}</option>
+              <option value="scrimmage">{t.scrimmage}</option>
             </select>
           </div>
 
-          {/* Sort By */}
           <div>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500"
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-cyan-500"
             >
-              <option value="newest">Sort: Newest First</option>
-              <option value="oldest">Sort: Oldest First</option>
-              <option value="highest">Sort: Highest Score</option>
-              <option value="lowest">Sort: Lowest Score</option>
-              <option value="stopTime">Sort: Highest Stop Time</option>
+              <option value="newest">{t.sortNewest}</option>
+              <option value="oldest">{t.sortOldest}</option>
+              <option value="highest">{t.sortHighest}</option>
+              <option value="lowest">{t.sortLowest}</option>
+              <option value="stopTime">{t.sortStopTime}</option>
             </select>
           </div>
         </div>
@@ -299,109 +305,95 @@ export default function MatchHistory({ onLoadMatchIntoCalculator, onNewMatchSave
       {/* Matches List */}
       <div className="space-y-3">
         {sortedMatches.length === 0 ? (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-10 text-center text-slate-400">
-            <Trophy className="w-10 h-10 mx-auto text-slate-600 mb-2" />
-            <p className="font-semibold text-slate-300">No saved matches match your filter</p>
-            <p className="text-xs text-slate-500 mt-1">Score a run in the Calculator and press "Save Match" to see it here!</p>
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-10 text-center text-slate-400 shadow-sm">
+            <Trophy className="w-10 h-10 mx-auto text-slate-400 mb-2" />
+            <p className="font-bold text-slate-700 dark:text-slate-300">{t.noMatches}</p>
+            <p className="text-xs text-slate-400 mt-1">{t.noMatchesSub}</p>
           </div>
         ) : (
           sortedMatches.map(item => {
             const isExpanded = expandedMatchId === item.id;
-            const tagObj = SESSION_TAGS.find(t => t.id === item.sessionTag);
-            const typeObj = MATCH_TYPES.find(t => t.id === item.matchType);
 
             return (
               <div 
                 key={item.id}
-                className="bg-slate-900 border border-slate-800 rounded-2xl p-4 md:p-5 hover:border-slate-700 transition-all shadow-md"
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 md:p-5 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  
-                  {/* Left: Metadata & Team */}
                   <div className="space-y-1.5">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-slate-950 text-slate-300 border border-slate-800 text-xs font-semibold">
+                      <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-xs font-bold border border-slate-200 dark:border-slate-800">
                         {getMatchIcon(item.matchType)}
-                        <span>{typeObj?.short || item.matchType}</span>
+                        <span>{t[item.matchType] || item.matchType}</span>
                       </span>
 
-                      {tagObj && (
-                        <span className={`px-2.5 py-0.5 rounded-lg text-xs font-semibold border ${tagObj.color}`}>
-                          {tagObj.label}
-                        </span>
-                      )}
+                      {item.sessionTag && getTagBadge(item.sessionTag)}
 
-                      <span className="text-xs text-slate-500 font-mono flex items-center gap-1">
+                      <span className="text-xs text-slate-400 font-mono flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
                         {item.dateStr} {item.timeStr}
                       </span>
                     </div>
 
                     <div className="flex items-baseline gap-2">
-                      <h4 className="font-bold text-white text-base">
+                      <h4 className="font-extrabold text-slate-900 dark:text-white text-base">
                         {item.teamName || 'My Robot'}
                       </h4>
                       {item.matchNotes && (
-                        <span className="text-xs text-slate-400 italic">
+                        <span className="text-xs text-slate-500 italic">
                           — "{item.matchNotes}"
                         </span>
                       )}
                     </div>
                   </div>
 
-                  {/* Right: Score & Actions */}
                   <div className="flex items-center justify-between sm:justify-end gap-4">
                     <div className="text-right">
-                      <div className="text-3xl font-black font-mono text-cyan-400">
-                        {item.score} <span className="text-xs font-bold text-slate-400">PTS</span>
+                      <div className="text-3xl font-black font-mono text-cyan-600 dark:text-cyan-400">
+                        {item.score} <span className="text-xs font-bold text-slate-400">{t.pts}</span>
                       </div>
                       <div className="text-xs text-slate-400 flex items-center justify-end gap-2 font-mono">
-                        <span>{item.totalBags || 0} bags</span>
+                        <span>{item.totalBags || 0} {t.bags}</span>
                         {item.skillsStopTime > 0 && (
-                          <span className="text-amber-400 font-bold">
+                          <span className="text-amber-500 font-bold">
                             • {item.skillsStopTime}s stop
                           </span>
                         )}
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5">
-                      {/* Load into calculator */}
+                    <div className="flex items-center gap-1">
                       <button
                         type="button"
                         onClick={() => onLoadMatchIntoCalculator(item)}
-                        className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-400 hover:text-cyan-300 border border-slate-700"
-                        title="Load this match setup into the calculator"
+                        className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-cyan-600 dark:text-cyan-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                        title={t.loadMatch}
                       >
                         <RotateCcw className="w-4 h-4" />
                       </button>
 
-                      {/* Edit details */}
                       <button
                         type="button"
                         onClick={() => setEditingMatch(item)}
-                        className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700"
-                        title="Edit match notes, tag, or team name"
+                        className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                        title={t.editMatch}
                       >
                         <Edit3 className="w-4 h-4" />
                       </button>
 
-                      {/* Delete */}
                       <button
                         type="button"
                         onClick={() => handleDelete(item.id)}
-                        className="p-2 rounded-xl bg-slate-800 hover:bg-rose-900/40 text-slate-400 hover:text-rose-300 border border-slate-700"
-                        title="Delete this match"
+                        className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 hover:bg-rose-50"
+                        title={t.deleteMatch}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
 
-                      {/* Expand breakdown toggle */}
                       <button
                         type="button"
                         onClick={() => setExpandedMatchId(isExpanded ? null : item.id)}
-                        className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700"
-                        title="Show score breakdown"
+                        className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                       >
                         {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </button>
@@ -409,28 +401,21 @@ export default function MatchHistory({ onLoadMatchIntoCalculator, onNewMatchSave
                   </div>
                 </div>
 
-                {/* Expanded Details Breakdown */}
                 {isExpanded && (
-                  <div className="mt-4 pt-4 border-t border-slate-800 text-xs text-slate-300 bg-slate-950/60 p-3 rounded-xl space-y-2">
-                    <div className="font-semibold text-slate-400 uppercase tracking-wider text-[11px]">
-                      Scoring Details ({item.mode === 'detailed' ? 'Detailed Mode' : 'Quick Mode'})
-                    </div>
+                  <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-950/60 p-3.5 rounded-2xl space-y-2">
                     {item.mode === 'detailed' && item.details ? (
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono">
-                        <div className="p-2 bg-slate-900 rounded border border-yellow-500/30">
-                          <strong className="text-yellow-400">L4 (Top):</strong> {item.details.l4Yellow || 0} bags ({ (item.details.l4Yellow || 0) * 16 } pts)
+                        <div className="p-2 bg-white dark:bg-slate-900 rounded-xl border border-amber-300 dark:border-yellow-500/30">
+                          <strong className="text-amber-600 dark:text-yellow-400">L4 Top:</strong> {item.details.l4Yellow || 0} bags ({(item.details.l4Yellow || 0) * 16} pts)
                         </div>
-                        <div className="p-2 bg-slate-900 rounded border border-slate-800">
-                          <strong className="text-cyan-400">L3:</strong> Red {item.details.l3Red || 0}, Blue {item.details.l3Blue || 0}, Yellow {item.details.l3Yellow || 0}
+                        <div className="p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                          <strong className="text-cyan-600 dark:text-cyan-400">L3:</strong> Red {item.details.l3Red || 0}, Blue {item.details.l3Blue || 0}, Yellow {item.details.l3Yellow || 0}
                         </div>
-                        <div className="p-2 bg-slate-900 rounded border border-slate-800">
-                          <strong className="text-blue-400">L2:</strong> Red {item.details.l2Red || 0}, Blue {item.details.l2Blue || 0}, Yellow {item.details.l2Yellow || 0}
+                        <div className="p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                          <strong className="text-blue-600 dark:text-blue-400">L2:</strong> Red {item.details.l2Red || 0}, Blue {item.details.l2Blue || 0}, Yellow {item.details.l2Yellow || 0}
                         </div>
-                        <div className="p-2 bg-slate-900 rounded border border-slate-800">
-                          <strong className="text-emerald-400">L1:</strong> Red {item.details.l1Red || 0}, Blue {item.details.l1Blue || 0}, Yellow {item.details.l1Yellow || 0}
-                        </div>
-                        <div className="p-2 bg-slate-900 rounded border border-slate-800 col-span-2">
-                          <strong className="text-slate-300">Floor Goals:</strong> Red {item.details.floorRed || 0}, Blue {item.details.floorBlue || 0}, Yellow {item.details.floorYellow || 0}
+                        <div className="p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                          <strong className="text-emerald-600 dark:text-emerald-400">L1:</strong> Red {item.details.l1Red || 0}, Blue {item.details.l1Blue || 0}, Yellow {item.details.l1Yellow || 0}
                         </div>
                       </div>
                     ) : item.details ? (
@@ -450,19 +435,18 @@ export default function MatchHistory({ onLoadMatchIntoCalculator, onNewMatchSave
         )}
       </div>
 
-      {/* Edit Match Details Modal */}
+      {/* Edit Match Modal */}
       {editingMatch && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-white text-lg flex items-center gap-2">
-                <Edit3 className="w-5 h-5 text-cyan-400" />
-                <span>Edit Match Information</span>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
+                {t.editMatch}
               </h3>
               <button
                 type="button"
                 onClick={() => setEditingMatch(null)}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -470,70 +454,34 @@ export default function MatchHistory({ onLoadMatchIntoCalculator, onNewMatchSave
 
             <form onSubmit={handleSaveEdit} className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-slate-400 block mb-1">
-                  Team / Robot Label
-                </label>
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">{t.modalTeam}</label>
                 <input
                   type="text"
                   value={editingMatch.teamName}
                   onChange={(e) => setEditingMatch({ ...editingMatch, teamName: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-slate-100"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-400 block mb-1">
-                  Session / Activity Tag
-                </label>
-                <select
-                  value={editingMatch.sessionTag}
-                  onChange={(e) => setEditingMatch({ ...editingMatch, sessionTag: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500"
-                >
-                  {SESSION_TAGS.map(tag => (
-                    <option key={tag.id} value={tag.id}>{tag.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-400 block mb-1">
-                  Match Category
-                </label>
-                <select
-                  value={editingMatch.matchType}
-                  onChange={(e) => setEditingMatch({ ...editingMatch, matchType: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500"
-                >
-                  {MATCH_TYPES.map(t => (
-                    <option key={t.id} value={t.id}>{t.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-400 block mb-1">
-                  Skills Stop Time (seconds remaining)
-                </label>
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">{t.stopTime}</label>
                 <input
                   type="number"
                   min="0"
                   max="60"
                   value={editingMatch.skillsStopTime || 0}
                   onChange={(e) => setEditingMatch({ ...editingMatch, skillsStopTime: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-amber-600 dark:text-amber-400 font-mono font-bold"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-400 block mb-1">
-                  Notes
-                </label>
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">{t.modalNotes}</label>
                 <textarea
-                  rows="3"
+                  rows="2"
                   value={editingMatch.matchNotes}
                   onChange={(e) => setEditingMatch({ ...editingMatch, matchNotes: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-slate-100"
                 />
               </div>
 
@@ -541,15 +489,15 @@ export default function MatchHistory({ onLoadMatchIntoCalculator, onNewMatchSave
                 <button
                   type="button"
                   onClick={() => setEditingMatch(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 text-sm font-semibold"
+                  className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-sm font-semibold"
                 >
-                  Cancel
+                  {t.modalCancel}
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-cyan-500 text-slate-950 font-bold hover:bg-cyan-400 text-sm"
+                  className="px-5 py-2 rounded-xl bg-cyan-500 text-slate-950 font-bold text-sm"
                 >
-                  Save Changes
+                  {t.modalSaveButton}
                 </button>
               </div>
             </form>

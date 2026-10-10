@@ -1,35 +1,69 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Calculator, 
   Clock, 
   History, 
-  Columns2, 
   BookOpen, 
-  Cpu, 
   Bot, 
-  ExternalLink,
-  ShieldCheck
+  Sun, 
+  Moon, 
+  Globe
 } from 'lucide-react';
 import ScoreCalculator from './components/ScoreCalculator';
 import MatchTimer from './components/MatchTimer';
 import MatchHistory from './components/MatchHistory';
 import RulesModal from './components/RulesModal';
 import { GAME_INFO } from './constants/rules';
+import { translations } from './constants/translations';
 
 export default function App() {
-  // Tabs: 'calculator', 'timer', 'split', 'history'
-  const [activeTab, setActiveTab] = useState('split');
+  // Tabs: 'calculator' (default), 'timer', 'history'
+  const [activeTab, setActiveTab] = useState('calculator');
   const [skillsStopTime, setSkillsStopTime] = useState(0);
   const [isRulesOpen, setIsRulesOpen] = useState(false);
   const [externalLoadedState, setExternalLoadedState] = useState(null);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
 
-  // Callback when timer records a stop time
+  // Theme: 'light' or 'dark' (Default to light for bright, clean UI)
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('vexiq_theme') || 'light';
+  });
+
+  // Language: 'en' or 'vi' (Default to Vietnamese 'vi' if browser is in VN or user selects)
+  const [lang, setLang] = useState(() => {
+    return localStorage.getItem('vexiq_lang') || 'vi';
+  });
+
+  const t = translations[lang] || translations.en;
+
+  // Apply theme class to <html>
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('vexiq_theme', theme);
+  }, [theme]);
+
+  // Save language preference
+  useEffect(() => {
+    localStorage.setItem('vexiq_lang', lang);
+  }, [lang]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
+
+  const toggleLang = () => {
+    setLang(prev => prev === 'vi' ? 'en' : 'vi');
+  };
+
   const handleRecordStopTime = (secondsRemaining) => {
     setSkillsStopTime(secondsRemaining);
   };
 
-  // Callback when user clicks "Load into Calculator" from History
   const handleLoadMatchIntoCalculator = (matchItem) => {
     setExternalLoadedState({
       mode: matchItem.mode,
@@ -50,163 +84,154 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
       
-      {/* Top Navigation & Branding Bar */}
-      <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* Top Navbar */}
+      <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-950/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
           
           {/* Logo & Title */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-600 via-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-              <Bot className="w-6 h-6 text-white" />
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 flex items-center justify-center shadow-md shadow-cyan-500/20">
+              <Bot className="w-5 h-5 text-white" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="font-extrabold text-base sm:text-lg text-white tracking-tight">
-                  VEX IQ LEVEL UP
+                <h1 className="font-black text-base sm:text-lg text-slate-900 dark:text-white tracking-tight">
+                  {t.appTitle}
                 </h1>
-                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/30">
                   {GAME_INFO.season}
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
-                Official Online Calculator & Match Timer
-              </p>
             </div>
           </div>
 
-          {/* Navigation Tab Bar */}
-          <div className="flex items-center gap-1.5 overflow-x-auto py-1 sm:py-0">
-            <button
-              type="button"
-              onClick={() => setActiveTab('split')}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
-                activeTab === 'split'
-                  ? 'bg-cyan-500 text-slate-950 shadow-md font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
-            >
-              <Columns2 className="w-4 h-4" />
-              <span>Split View</span>
-            </button>
-
+          {/* Center Navigation Tabs (Calculator, Timer, History) */}
+          <nav className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl border border-slate-200 dark:border-slate-800">
             <button
               type="button"
               onClick={() => setActiveTab('calculator')}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
                 activeTab === 'calculator'
-                  ? 'bg-cyan-500 text-slate-950 shadow-md font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                  ? 'bg-white dark:bg-cyan-500 text-slate-900 dark:text-slate-950 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
-              <Calculator className="w-4 h-4" />
-              <span>Calculator</span>
+              <Calculator className="w-4 h-4 text-cyan-600 dark:text-cyan-900" />
+              <span>{t.calculator}</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('timer')}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
                 activeTab === 'timer'
-                  ? 'bg-cyan-500 text-slate-950 shadow-md font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                  ? 'bg-white dark:bg-cyan-500 text-slate-900 dark:text-slate-950 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
-              <Clock className="w-4 h-4" />
-              <span>Timer</span>
+              <Clock className="w-4 h-4 text-cyan-600 dark:text-cyan-900" />
+              <span>{t.timer}</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('history')}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
                 activeTab === 'history'
-                  ? 'bg-cyan-500 text-slate-950 shadow-md font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                  ? 'bg-white dark:bg-cyan-500 text-slate-900 dark:text-slate-950 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
-              <History className="w-4 h-4" />
-              <span>Progress & History</span>
+              <History className="w-4 h-4 text-cyan-600 dark:text-cyan-900" />
+              <span>{t.history}</span>
             </button>
+          </nav>
 
-            {/* Rules Button */}
+          {/* Right Action Icons (Rules, Theme, Language) */}
+          <div className="flex items-center gap-1.5">
+            {/* Rules modal button */}
             <button
               type="button"
               onClick={() => setIsRulesOpen(true)}
-              className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 transition-all ml-1"
-              title="Official Game Rules Reference"
+              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 transition-all"
+              title={t.rules}
             >
-              <BookOpen className="w-4 h-4 text-cyan-400" />
+              <BookOpen className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+            </button>
+
+            {/* Language Switcher (EN / VI) */}
+            <button
+              type="button"
+              onClick={toggleLang}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 text-xs font-black transition-all"
+              title="Toggle Language (EN / VI)"
+            >
+              <Globe className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+              <span>{lang.toUpperCase()}</span>
+            </button>
+
+            {/* Light / Dark Mode Toggle */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 transition-all"
+              title={theme === 'dark' ? t.lightMode : t.darkMode}
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-4 h-4 text-amber-400" />
+              ) : (
+                <Moon className="w-4 h-4 text-slate-700" />
+              )}
             </button>
           </div>
         </div>
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Split View: Side-by-side or stacked Timer + Calculator */}
-        {activeTab === 'split' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            <div className="lg:col-span-5 lg:sticky lg:top-24">
-              <MatchTimer onRecordStopTime={handleRecordStopTime} />
-            </div>
-            <div className="lg:col-span-7">
-              <ScoreCalculator
-                skillsStopTime={skillsStopTime}
-                setSkillsStopTime={setSkillsStopTime}
-                onMatchSaved={handleMatchSaved}
-                externalLoadedState={externalLoadedState}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Solo Calculator Tab */}
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6">
+        {/* Calculator View */}
         {activeTab === 'calculator' && (
-          <div className="max-w-4xl mx-auto">
-            <ScoreCalculator
-              skillsStopTime={skillsStopTime}
-              setSkillsStopTime={setSkillsStopTime}
-              onMatchSaved={handleMatchSaved}
-              externalLoadedState={externalLoadedState}
-            />
-          </div>
+          <ScoreCalculator
+            skillsStopTime={skillsStopTime}
+            setSkillsStopTime={setSkillsStopTime}
+            onMatchSaved={handleMatchSaved}
+            externalLoadedState={externalLoadedState}
+            lang={lang}
+          />
         )}
 
-        {/* Solo Timer Tab */}
+        {/* Timer View */}
         {activeTab === 'timer' && (
           <div className="max-w-3xl mx-auto">
-            <MatchTimer onRecordStopTime={handleRecordStopTime} />
+            <MatchTimer 
+              onRecordStopTime={handleRecordStopTime} 
+              lang={lang}
+            />
           </div>
         )}
 
-        {/* Saved Match History & Progress Tab */}
+        {/* Saved Match History View */}
         {activeTab === 'history' && (
-          <div className="max-w-5xl mx-auto">
-            <MatchHistory
-              onLoadMatchIntoCalculator={handleLoadMatchIntoCalculator}
-              onNewMatchSaved={historyRefreshKey}
-            />
-          </div>
+          <MatchHistory
+            onLoadMatchIntoCalculator={handleLoadMatchIntoCalculator}
+            onNewMatchSaved={historyRefreshKey}
+            lang={lang}
+          />
         )}
       </main>
 
       {/* Footer */}
-      <footer className="bg-slate-950 border-t border-slate-900 py-6 text-center text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>VEX IQ Robotics Competition • Level Up (Game Manual v1.1)</span>
-          </div>
-          <div>
-            Built for competitive teams & drivers • Ready for Vercel deployment
-          </div>
+      <footer className="bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-900 py-5 text-center text-xs text-slate-500">
+        <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <span>VEX IQ Robotics Competition • Level Up (Game Manual v1.1)</span>
+          <span>Made for Teams, Referees & Coaches</span>
         </div>
       </footer>
 
-      {/* Rules Reference Modal */}
-      <RulesModal isOpen={isRulesOpen} onClose={() => setIsRulesOpen(false)} />
+      {/* Rules Modal */}
+      <RulesModal isOpen={isRulesOpen} onClose={() => setIsRulesOpen(false)} lang={lang} />
     </div>
   );
 }
