@@ -34,8 +34,8 @@ export default function ScoreCalculator({
 }) {
   const t = translations[lang] || translations.en;
 
-  // Scoring mode: 'detailed' (default) or 'quick'
-  const [mode, setMode] = useState('detailed');
+  // Scoring mode: 'quick' (default) or 'detailed'
+  const [mode, setMode] = useState('quick');
 
   // Calculator states
   const [quickState, setQuickState] = useState(INITIAL_QUICK_STATE);
@@ -216,18 +216,6 @@ export default function ScoreCalculator({
         <div className="inline-flex p-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
           <button
             type="button"
-            onClick={() => setMode('detailed')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
-              mode === 'detailed'
-                ? 'bg-cyan-500 text-slate-950 font-bold shadow-md'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            }`}
-          >
-            <Grid className="w-4 h-4" />
-            <span>{t.detailedMode}</span>
-          </button>
-          <button
-            type="button"
             onClick={() => setMode('quick')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
               mode === 'quick'
@@ -237,6 +225,18 @@ export default function ScoreCalculator({
           >
             <Layers className="w-4 h-4" />
             <span>{t.quickMode}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('detailed')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+              mode === 'detailed'
+                ? 'bg-cyan-500 text-slate-950 font-bold shadow-md'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+            }`}
+          >
+            <Grid className="w-4 h-4" />
+            <span>{t.detailedMode}</span>
           </button>
         </div>
 
@@ -484,54 +484,6 @@ export default function ScoreCalculator({
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
-
-          {/* Additional Yellow Bags Row */}
-          <div className="bg-amber-50/30 dark:bg-slate-900/60 border border-amber-200 dark:border-yellow-500/20 rounded-3xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold text-amber-700 dark:text-yellow-300 uppercase tracking-wider flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-                {t.yellowPlacement}
-              </span>
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                {t.yellowPlacementSub}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                { label: 'Yellow L3', key: 'l3Yellow', pts: 12 },
-                { label: 'Yellow L2', key: 'l2Yellow', pts: 6 },
-                { label: 'Yellow L1', key: 'l1Yellow', pts: 3 },
-                { label: 'Yellow Floor', key: 'floorYellow', pts: 1 },
-              ].map(item => (
-                <div key={item.key} className="bg-white dark:bg-slate-950 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-sm">
-                  <div>
-                    <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">{item.label}</div>
-                    <div className="text-[10px] text-amber-600 dark:text-yellow-400 font-mono font-bold">{item.pts} {t.pts}</div>
-                  </div>
-                  <div className="flex items-center bg-slate-50 dark:bg-slate-900 rounded-xl p-0.5 border border-slate-200 dark:border-slate-700">
-                    <button
-                      type="button"
-                      onClick={() => updateDetailed(item.key, -1)}
-                      className="w-6 h-6 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                    >
-                      <Minus className="w-3 h-3" />
-                    </button>
-                    <span className="w-6 text-center font-mono text-xs font-bold text-amber-600 dark:text-yellow-300">
-                      {detailedState[item.key] || 0}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => updateDetailed(item.key, 1)}
-                      className="w-6 h-6 flex items-center justify-center text-amber-600 dark:text-yellow-400 hover:text-amber-700"
-                    >
-                      <Plus className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
         </div>
