@@ -325,14 +325,18 @@ export default function Home({ onNavigate, lang = 'en' }) {
               </h3>
             </div>
 
-            <div className="space-y-3 text-slate-300 text-xs sm:text-sm leading-relaxed">
+            <div className="space-y-3.5 text-slate-300 text-xs sm:text-sm leading-relaxed">
               <p>{t.whyWeMadeP1}</p>
               <p>{t.whyWeMadeP2}</p>
-              <p className="text-cyan-300 font-medium">{t.whyWeMadeP3}</p>
+              <p>{t.whyWeMadeP3}</p>
+              <p>{t.whyWeMadeP4}</p>
+              <p className="text-cyan-300 font-semibold pt-2 border-t border-white/10">
+                {t.teamStoryClosing}
+              </p>
             </div>
           </div>
 
-          {/* 3 Pillars of Craftsmanship */}
+          {/* 3 Pillars */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
             
             <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
@@ -359,13 +363,9 @@ export default function Home({ onNavigate, lang = 'en' }) {
               <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
                 <ShieldCheck className="w-4 h-4" />
               </div>
-              <h4 className="font-extrabold text-sm text-white">
-                {isVi ? '100% Học sinh làm chủ' : '100% Student-Centered'}
-              </h4>
+              <h4 className="font-extrabold text-sm text-white">{t.studentCenteredTitle}</h4>
               <p className="text-xs text-slate-400 leading-normal">
-                {isVi 
-                  ? 'Tuân thủ nghiêm ngặt chuẩn đạo đức và tinh thần tự lập VEX Robotics.' 
-                  : 'Built adhering to the spirit of the official REC Foundation Student-Centered policy.'}
+                {t.studentCenteredDesc}
               </p>
             </div>
 
