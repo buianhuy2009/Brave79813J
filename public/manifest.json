@@ -1,0 +1,19 @@
+{
+  "name": "VEX IQ Level Up - Calculator, Timer & Strategy",
+  "short_name": "Level Up",
+  "description": "Official VEX IQ Level Up 2026-2027 Suite • Calculator, Timer, Strategy Board & Game Manual by Team Brave 79813J",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#06b6d4",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2306b6d4'><rect width='24' height='24' rx='6' fill='%230f172a'/><circle cx='12' cy='12' r='6' fill='%2306b6d4'/></svg>",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
+

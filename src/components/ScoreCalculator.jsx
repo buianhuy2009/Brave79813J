@@ -14,7 +14,8 @@ import {
   Minus,
   X,
   ChevronDown,
-  CheckCircle2
+  CheckCircle2,
+  Share2
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { 
@@ -26,6 +27,7 @@ import {
 } from '../constants/rules';
 import { translations } from '../constants/translations';
 import { saveMatch, getSavedMatches } from '../utils/storage';
+import ShareMatchesModal from './ShareMatchesModal';
 
 export default function ScoreCalculator({ 
   skillsStopTime, 
@@ -61,6 +63,7 @@ export default function ScoreCalculator({
   const [modalMajorViolations, setModalMajorViolations] = useState(0);
   const [modalRobotType, setModalRobotType] = useState('');
   const [saveToast, setSaveToast] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   // Sync external loaded state if user restored from history
   useEffect(() => {
@@ -304,6 +307,16 @@ export default function ScoreCalculator({
             >
               <Save className="w-5 h-5" />
               <span>{t.saveMatch}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsShareModalOpen(true)}
+              className="flex items-center gap-1.5 px-4 py-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-cyan-50 dark:hover:bg-cyan-950/40 text-slate-700 dark:text-slate-200 hover:text-cyan-600 dark:hover:text-cyan-400 font-semibold transition-all active:scale-95 text-xs sm:text-sm"
+              title={t.shareMatches}
+            >
+              <Share2 className="w-4 h-4 text-cyan-500" />
+              <span>{t.shareMatches}</span>
             </button>
 
             <button
@@ -847,6 +860,13 @@ export default function ScoreCalculator({
           <span className="text-xs sm:text-sm font-bold">{t.savedMatchSuccessToast}</span>
         </div>
       )}
+
+      {/* Share Matches Modal */}
+      <ShareMatchesModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        lang={lang}
+      />
     </div>
   );
 }

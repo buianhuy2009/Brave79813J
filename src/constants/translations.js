@@ -176,6 +176,47 @@ export const translations = {
     deleteConfirm: "Are you sure you want to delete this saved match?",
     clearConfirm: "⚠️ Delete ALL saved matches?",
     
+    // Strategy Board
+    strategy: "Strategy",
+    strategyBoard: "2D Field Strategy Board",
+    strategyDesc: "Plan autonomous and driver routes on the virtual 6' x 8' field. Add waypoints, arrows, text notes, and export to PNG for your Engineering Notebook.",
+    pencilTool: "Pencil",
+    arrowTool: "Arrow",
+    waypointTool: "Waypoint",
+    textTool: "Text Note",
+    robotTool: "Robot Stamp",
+    undoTool: "Undo",
+    clearCanvas: "Clear Board",
+    exportPNG: "Export Image (PNG)",
+    routineName: "Routine Name",
+    saveRoutine: "Save Plan",
+    loadRoutine: "Load Plan",
+    clickToAddText: "Click on field to place note",
+    enterNoteText: "Enter note text...",
+    colorCyan: "Cyan",
+    colorYellow: "Yellow",
+    colorRed: "Red",
+    colorBlue: "Blue",
+    colorWhite: "White",
+
+    // Share Matches
+    shareMatches: "Share Match History",
+    shareMatchesDesc: "Easily share your saved practice and tournament runs with teammates or transfer to another device.",
+    shareMethodFile: "Way 1: File Transfer (.json)",
+    shareMethodQR: "Way 2: Scan QR Code",
+    exportFileBtn: "Export History File (.json)",
+    importFileBtn: "Import History File (.json)",
+    scanQrDesc: "Scan this QR code with a phone or tablet to open and import match runs instantly.",
+    shareSuccessImport: "Successfully imported {count} matches!",
+    shareNoNewMatches: "All matches in this file are already saved on this device.",
+
+    // Notebook Report (Sub-feature in Match History)
+    exportNotebook: "Notebook Report",
+    notebookTitle: "VEX IQ Level Up - Engineering Testing Log",
+    printReport: "Print / Save PDF",
+    notebookCleanRate: "Clean Run Rate (0 Violations)",
+    notebookSubtitle: "Official Practice & Iteration Log for Design Award Judging",
+
     // Light / Dark
     lightMode: "Light",
     darkMode: "Dark"
@@ -354,6 +395,47 @@ export const translations = {
     importJSON: "Nhập file JSON",
     deleteConfirm: "Bạn có chắc muốn xóa trận đấu này?",
     clearConfirm: "⚠️ Bạn có chắc muốn xóa TẤT CẢ các trận đã lưu?",
+
+    // Strategy Board
+    strategy: "Chiến thuật",
+    strategyBoard: "Bảng chiến thuật sân 2D",
+    strategyDesc: "Vẽ lộ trình tự hành và lái tay trên sân 6' x 8'. Thêm điểm mốc, mũi tên, ghi chú chữ và xuất ảnh PNG cho sổ tay kỹ thuật.",
+    pencilTool: "Bút vẽ",
+    arrowTool: "Mũi tên",
+    waypointTool: "Điểm mốc",
+    textTool: "Ghi chú chữ",
+    robotTool: "Đặt Robot",
+    undoTool: "Hoàn tác",
+    clearCanvas: "Xóa bảng",
+    exportPNG: "Xuất ảnh (PNG)",
+    routineName: "Tên chiến thuật",
+    saveRoutine: "Lưu chiến thuật",
+    loadRoutine: "Nạp chiến thuật",
+    clickToAddText: "Nhấp chuột vào sân để đặt ghi chú",
+    enterNoteText: "Nhập nội dung ghi chú...",
+    colorCyan: "Xanh Cyan",
+    colorYellow: "Vàng",
+    colorRed: "Đỏ",
+    colorBlue: "Xanh lam",
+    colorWhite: "Trắng",
+
+    // Share Matches
+    shareMatches: "Chia sẻ lịch sử đấu",
+    shareMatchesDesc: "Chia sẻ các lượt chạy đã lưu với đồng đội hoặc chuyển sang thiết bị khác bằng file hoặc mã QR.",
+    shareMethodFile: "Cách 1: Chuyển bằng File (.json)",
+    shareMethodQR: "Cách 2: Quét mã QR",
+    exportFileBtn: "Tải file lịch sử (.json)",
+    importFileBtn: "Nhập file lịch sử (.json)",
+    scanQrDesc: "Quét mã QR này bằng điện thoại hoặc máy tính bảng để nạp trực tiếp kết quả đấu.",
+    shareSuccessImport: "Đã nhập thành công {count} trận đấu!",
+    shareNoNewMatches: "Tất cả trận đấu trong file này đã có sẵn trên máy của bạn.",
+
+    // Notebook Report (Sub-feature in Match History)
+    exportNotebook: "Xuất Sổ tay",
+    notebookTitle: "VEX IQ Level Up - Nhật ký thử nghiệm kỹ thuật",
+    printReport: "In / Lưu PDF",
+    notebookCleanRate: "Tỉ lệ chạy sạch (0 lỗi)",
+    notebookSubtitle: "Bản tổng kết lượt chạy thực tế phục vụ chấm giải Sổ tay Kỹ thuật (Design Award)",
 
     // Light / Dark
     lightMode: "Sáng",

@@ -22,7 +22,9 @@ import {
   Sparkles,
   ArrowRight,
   TrendingUp,
-  AlertTriangle
+  AlertTriangle,
+  Share2,
+  Printer
 } from 'lucide-react';
 import { 
   getSavedMatches, 
@@ -33,6 +35,8 @@ import {
   STORAGE_KEY
 } from '../utils/storage';
 import { translations } from '../constants/translations';
+import ShareMatchesModal from './ShareMatchesModal';
+import NotebookReportModal from './NotebookReportModal';
 
 export default function MatchHistory({ onLoadMatchIntoCalculator, onNewMatchSaved, lang = 'en' }) {
   const t = translations[lang] || translations.en;
@@ -42,6 +46,10 @@ export default function MatchHistory({ onLoadMatchIntoCalculator, onNewMatchSave
 
   // Sub-tabs in History: 'list', 'daily', 'compare'
   const [activeTab, setActiveTab] = useState('list');
+
+  // Modals
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isNotebookModalOpen, setIsNotebookModalOpen] = useState(false);
 
   // Filters & sorting for list view
   const [filterType, setFilterType] = useState('all');
@@ -332,22 +340,27 @@ export default function MatchHistory({ onLoadMatchIntoCalculator, onNewMatchSave
           </button>
         </div>
 
-        {/* Global Action Buttons (Export, Import, Clear) */}
+        {/* Global Action Buttons (Share Matches, Notebook Report, Clear) */}
         <div className="flex items-center gap-2 text-xs">
           <button
             type="button"
-            onClick={handleExportJSON}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all font-semibold shadow-sm"
+            onClick={() => setIsShareModalOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold transition-all shadow-sm hover:scale-105 active:scale-95"
+            title={t.shareMatches}
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>{t.exportJSON}</span>
+            <Share2 className="w-3.5 h-3.5" />
+            <span>{t.shareMatches}</span>
           </button>
 
-          <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all font-semibold shadow-sm cursor-pointer">
-            <Upload className="w-3.5 h-3.5" />
-            <span>{t.importJSON}</span>
-            <input type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
-          </label>
+          <button
+            type="button"
+            onClick={() => setIsNotebookModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all font-semibold shadow-sm hover:scale-105 active:scale-95"
+            title={t.exportNotebook}
+          >
+            <Printer className="w-3.5 h-3.5 text-amber-500" />
+            <span>{t.exportNotebook}</span>
+          </button>
 
           {matches.length > 0 && (
             <button
@@ -987,6 +1000,21 @@ export default function MatchHistory({ onLoadMatchIntoCalculator, onNewMatchSave
           </div>
         </div>
       )}
+
+      {/* Share Matches Modal (Method 1: File Transfer + Method 2: QR Code) */}
+      <ShareMatchesModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        lang={lang}
+      />
+
+      {/* Notebook Report Printable Sheet Modal */}
+      <NotebookReportModal
+        isOpen={isNotebookModalOpen}
+        onClose={() => setIsNotebookModalOpen(false)}
+        matches={matches}
+        lang={lang}
+      />
     </div>
   );
 }

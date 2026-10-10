@@ -8,13 +8,15 @@ import {
   Sun, 
   Moon, 
   Globe,
-  Home as HomeIcon
+  Home as HomeIcon,
+  Compass
 } from 'lucide-react';
 import Home from './components/Home';
 import ScoreCalculator from './components/ScoreCalculator';
 import MatchTimer from './components/MatchTimer';
 import MatchHistory from './components/MatchHistory';
 import GameManual from './components/GameManual';
+import StrategyBoard from './components/StrategyBoard';
 import RulesModal from './components/RulesModal';
 import { GAME_INFO } from './constants/rules';
 import { translations } from './constants/translations';
@@ -183,6 +185,19 @@ export default function App() {
               <BookOpen className="w-4 h-4 text-cyan-600 dark:text-cyan-900" />
               <span>{t.gameManual}</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('strategy')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                activeTab === 'strategy'
+                  ? 'bg-white dark:bg-cyan-500 text-slate-900 dark:text-slate-950 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <Compass className="w-4 h-4 text-cyan-600 dark:text-cyan-900" />
+              <span>{t.strategy}</span>
+            </button>
           </nav>
 
           {/* Right Action Icons (Rules / Manual, Theme, Language) */}
@@ -275,6 +290,11 @@ export default function App() {
         {/* Game Manual View */}
         {activeTab === 'manual' && (
           <GameManual lang={lang} />
+        )}
+
+        {/* Strategy Board View */}
+        {activeTab === 'strategy' && (
+          <StrategyBoard lang={lang} />
         )}
       </main>
 

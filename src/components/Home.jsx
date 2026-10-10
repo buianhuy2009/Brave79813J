@@ -18,7 +18,8 @@ import {
   Layers,
   FileText,
   Code2,
-  ExternalLink
+  ExternalLink,
+  Compass
 } from 'lucide-react';
 import { GAME_INFO } from '../constants/rules';
 import { translations } from '../constants/translations';
@@ -102,6 +103,15 @@ export default function Home({ onNavigate, lang = 'en' }) {
             >
               <History className="w-4 h-4 text-indigo-500" />
               <span>{t.exploreHistory}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onNavigate('strategy')}
+              className="flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-extrabold text-sm border border-slate-200 dark:border-slate-700 shadow-sm transition-all hover:scale-105 active:scale-95"
+            >
+              <Compass className="w-4 h-4 text-cyan-500" />
+              <span>{t.strategy}</span>
             </button>
           </div>
 
