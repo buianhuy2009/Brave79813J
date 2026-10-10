@@ -3,7 +3,7 @@
 export const GAME_INFO = {
   name: "VEX IQ Level Up",
   season: "2026 - 2027",
-  manualVersion: "v1.1",
+  manualVersion: "v2.1",
   durationSeconds: 60,
   switchDriverSeconds: 35, // Switch window around 35-25 seconds remaining
   maxBags: {

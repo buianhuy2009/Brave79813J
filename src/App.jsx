@@ -12,6 +12,7 @@ import {
 import ScoreCalculator from './components/ScoreCalculator';
 import MatchTimer from './components/MatchTimer';
 import MatchHistory from './components/MatchHistory';
+import GameManual from './components/GameManual';
 import RulesModal from './components/RulesModal';
 import { GAME_INFO } from './constants/rules';
 import { translations } from './constants/translations';
@@ -147,18 +148,35 @@ export default function App() {
               <History className="w-4 h-4 text-cyan-600 dark:text-cyan-900" />
               <span>{t.history}</span>
             </button>
-          </nav>
 
-          {/* Right Action Icons (Rules, Theme, Language) */}
-          <div className="flex items-center gap-1.5">
-            {/* Rules modal button */}
             <button
               type="button"
-              onClick={() => setIsRulesOpen(true)}
-              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 transition-all"
-              title={t.rules}
+              onClick={() => setActiveTab('manual')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                activeTab === 'manual'
+                  ? 'bg-white dark:bg-cyan-500 text-slate-900 dark:text-slate-950 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
             >
-              <BookOpen className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+              <BookOpen className="w-4 h-4 text-cyan-600 dark:text-cyan-900" />
+              <span>{t.gameManual}</span>
+            </button>
+          </nav>
+
+          {/* Right Action Icons (Rules / Manual, Theme, Language) */}
+          <div className="flex items-center gap-1.5">
+            {/* Quick manual button */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('manual')}
+              className={`p-2 rounded-xl border transition-all ${
+                activeTab === 'manual'
+                  ? 'bg-cyan-500 text-slate-950 border-cyan-500 shadow-sm'
+                  : 'bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800'
+              }`}
+              title={t.gameManual}
+            >
+              <BookOpen className="w-4 h-4" />
             </button>
 
             {/* Language Switcher (EN / VI) */}
@@ -220,12 +238,17 @@ export default function App() {
             lang={lang}
           />
         )}
+
+        {/* Game Manual View */}
+        {activeTab === 'manual' && (
+          <GameManual lang={lang} />
+        )}
       </main>
 
       {/* Footer */}
       <footer className="bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-900 py-5 text-center text-xs text-slate-500">
         <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>VEX IQ Robotics Competition • Level Up (Game Manual v1.1)</span>
+          <span>VEX IQ Robotics Competition • Level Up (Game Manual v2.1)</span>
           <span>Made for Teams, Referees & Coaches</span>
         </div>
       </footer>

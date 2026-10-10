@@ -58,7 +58,7 @@ export default function ScoreCalculator({
   const [modalMatchDate, setModalMatchDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [modalMinorViolations, setModalMinorViolations] = useState(0);
   const [modalMajorViolations, setModalMajorViolations] = useState(0);
-  const [modalRobotType, setModalRobotType] = useState('Hero Bot');
+  const [modalRobotType, setModalRobotType] = useState('');
 
   // Sync external loaded state if user restored from history
   useEffect(() => {
@@ -744,7 +744,7 @@ export default function ScoreCalculator({
                         <button
                           key={item}
                           type="button"
-                          onClick={() => setModalRobotType(item)}
+                          onClick={() => setModalRobotType(modalRobotType === item ? '' : item)}
                           className={`text-[11px] px-2.5 py-1 rounded-lg border transition-all ${
                             modalRobotType === item
                               ? 'bg-cyan-500 text-slate-950 font-bold border-cyan-500 shadow-sm'
