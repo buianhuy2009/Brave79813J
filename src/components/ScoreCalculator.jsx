@@ -13,7 +13,8 @@ import {
   Plus, 
   Minus,
   X,
-  ChevronDown
+  ChevronDown,
+  CheckCircle2
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { 
@@ -59,6 +60,7 @@ export default function ScoreCalculator({
   const [modalMinorViolations, setModalMinorViolations] = useState(0);
   const [modalMajorViolations, setModalMajorViolations] = useState(0);
   const [modalRobotType, setModalRobotType] = useState('');
+  const [saveToast, setSaveToast] = useState(false);
 
   // Sync external loaded state if user restored from history
   useEffect(() => {
@@ -187,8 +189,13 @@ export default function ScoreCalculator({
       breakdown: currentResult
     };
 
-    saveMatch(matchPayload);
+    const savedResult = saveMatch(matchPayload);
     setIsSaveModalOpen(false);
+
+    if (savedResult) {
+      setSaveToast(true);
+      setTimeout(() => setSaveToast(false), 3500);
+    }
 
     // Fire celebration if high score
     if (currentTotalScore > 0 && currentTotalScore > existingHigh) {
@@ -830,6 +837,14 @@ export default function ScoreCalculator({
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Save Success Floating Toast */}
+      {saveToast && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-slate-900 text-white border border-emerald-500/50 shadow-2xl shadow-emerald-500/20 animate-bounce">
+          <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+          <span className="text-xs sm:text-sm font-bold">{t.savedMatchSuccessToast}</span>
         </div>
       )}
     </div>

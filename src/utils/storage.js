@@ -16,6 +16,7 @@ export function getSavedMatches() {
 
 export function saveMatch(matchData) {
   try {
+    const existing = getSavedMatches();
     const customDate = matchData.matchDate || new Date().toISOString().slice(0, 10);
     const newMatch = {
       id: 'match_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),

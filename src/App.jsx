@@ -7,8 +7,10 @@ import {
   Bot, 
   Sun, 
   Moon, 
-  Globe
+  Globe,
+  Home as HomeIcon
 } from 'lucide-react';
+import Home from './components/Home';
 import ScoreCalculator from './components/ScoreCalculator';
 import MatchTimer from './components/MatchTimer';
 import MatchHistory from './components/MatchHistory';
@@ -18,8 +20,8 @@ import { GAME_INFO } from './constants/rules';
 import { translations } from './constants/translations';
 
 export default function App() {
-  // Tabs: 'calculator' (default), 'timer', 'history'
-  const [activeTab, setActiveTab] = useState('calculator');
+  // Tabs: 'home' (default), 'calculator', 'timer', 'history', 'manual'
+  const [activeTab, setActiveTab] = useState('home');
   const [skillsStopTime, setSkillsStopTime] = useState(0);
   const [isRulesOpen, setIsRulesOpen] = useState(false);
   const [externalLoadedState, setExternalLoadedState] = useState(null);
@@ -92,24 +94,44 @@ export default function App() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
           
           {/* Logo & Title */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 flex items-center justify-center shadow-md shadow-cyan-500/20">
+          <div 
+            onClick={() => setActiveTab('home')}
+            className="flex items-center gap-3 cursor-pointer group"
+            title="Home • Team Brave 79813J"
+          >
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 flex items-center justify-center shadow-md shadow-cyan-500/20 group-hover:scale-105 transition-transform">
               <Bot className="w-5 h-5 text-white" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="font-black text-base sm:text-lg text-slate-900 dark:text-white tracking-tight">
+                <h1 className="font-black text-base sm:text-lg text-slate-900 dark:text-white tracking-tight group-hover:text-cyan-500 transition-colors">
                   {t.appTitle}
                 </h1>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/30">
                   {GAME_INFO.season}
                 </span>
               </div>
+              <span className="text-[10px] font-extrabold text-cyan-600 dark:text-cyan-400 block -mt-0.5">
+                Team Brave 79813J 🇻🇳
+              </span>
             </div>
           </div>
 
-          {/* Center Navigation Tabs (Calculator, Timer, History) */}
+          {/* Center Navigation Tabs (Home, Calculator, Timer, History, Manual) */}
           <nav className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl border border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setActiveTab('home')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                activeTab === 'home'
+                  ? 'bg-white dark:bg-cyan-500 text-slate-900 dark:text-slate-950 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <HomeIcon className="w-4 h-4 text-cyan-600 dark:text-cyan-900" />
+              <span>{t.home}</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setActiveTab('calculator')}
@@ -209,6 +231,17 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6">
+        {/* Home View */}
+        {activeTab === 'home' && (
+          <Home
+            onNavigate={(tab) => {
+              setActiveTab(tab);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            lang={lang}
+          />
+        )}
+
         {/* Calculator View */}
         {activeTab === 'calculator' && (
           <ScoreCalculator
@@ -246,10 +279,16 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-900 py-5 text-center text-xs text-slate-500">
-        <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>VEX IQ Robotics Competition • Level Up (Game Manual v2.1)</span>
-          <span>Made for Teams, Referees & Coaches</span>
+      <footer className="bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-900 py-6 text-center text-xs text-slate-500">
+        <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="font-extrabold text-slate-700 dark:text-slate-300">VEX IQ Level Up (Manual v2.1)</span>
+            <span>•</span>
+            <span className="text-cyan-600 dark:text-cyan-400 font-bold">Team Brave 79813J (Vietnam 🇻🇳)</span>
+          </div>
+          <div className="text-slate-400">
+            Crafted with modern UI/UX for Robotics Students, Referees & Coaches Worldwide
+          </div>
         </div>
       </footer>
 
