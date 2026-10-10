@@ -12,7 +12,8 @@ import {
   Clock, 
   Plus, 
   Minus,
-  X
+  X,
+  ChevronDown
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { 
@@ -52,6 +53,13 @@ export default function ScoreCalculator({
   const [modalNotes, setModalNotes] = useState('');
   const [modalStopTime, setModalStopTime] = useState(skillsStopTime || 0);
 
+  // More Options in Save Modal
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const [modalMatchDate, setModalMatchDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [modalMinorViolations, setModalMinorViolations] = useState(0);
+  const [modalMajorViolations, setModalMajorViolations] = useState(0);
+  const [modalRobotType, setModalRobotType] = useState('hero');
+
   // Sync external loaded state if user restored from history
   useEffect(() => {
     if (externalLoadedState) {
@@ -70,6 +78,10 @@ export default function ScoreCalculator({
       }
       if (externalLoadedState.matchNotes) setModalNotes(externalLoadedState.matchNotes);
       if (externalLoadedState.teamName) setModalTeamName(externalLoadedState.teamName);
+      if (externalLoadedState.matchDate) setModalMatchDate(externalLoadedState.matchDate);
+      if (externalLoadedState.minorViolations !== undefined) setModalMinorViolations(externalLoadedState.minorViolations);
+      if (externalLoadedState.majorViolations !== undefined) setModalMajorViolations(externalLoadedState.majorViolations);
+      if (externalLoadedState.robotType) setModalRobotType(externalLoadedState.robotType);
     }
   }, [externalLoadedState]);
 
@@ -163,6 +175,10 @@ export default function ScoreCalculator({
       totalBags: currentTotalBags,
       matchType: modalMatchType,
       sessionTag: modalSessionTag,
+      matchDate: modalMatchDate,
+      minorViolations: Number(modalMinorViolations) || 0,
+      majorViolations: Number(modalMajorViolations) || 0,
+      robotType: modalRobotType,
       teamName: modalTeamName.trim() || 'My Robot',
       matchNotes: modalNotes.trim(),
       skillsStopTime: modalMatchType !== 'teamwork' ? Number(modalStopTime) : 0,
@@ -670,6 +686,108 @@ export default function ScoreCalculator({
                   className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-cyan-500"
                 />
               </div>
+
+              {/* More Details Toggle Button */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setShowMoreOptions(!showMoreOptions)}
+                  className="flex items-center gap-1.5 text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline py-1"
+                >
+                  <ChevronDown className={`w-4 h-4 transition-transform ${showMoreOptions ? 'rotate-180' : ''}`} />
+                  <span>{showMoreOptions ? t.lessOptions : t.moreOptions} ({t.matchDate}, Violations, {t.robotType}...)</span>
+                </button>
+              </div>
+
+              {/* Collapsible More Options Section */}
+              {showMoreOptions && (
+                <div className="p-4 bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-3.5">
+                  
+                  {/* Match Date / Day */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                      {t.matchDate}
+                    </label>
+                    <input
+                      type="date"
+                      value={modalMatchDate}
+                      onChange={(e) => setModalMatchDate(e.target.value)}
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-cyan-500 font-mono"
+                    />
+                  </div>
+
+                  {/* Robot Type */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                      {t.robotType}
+                    </label>
+                    <select
+                      value={modalRobotType}
+                      onChange={(e) => setModalRobotType(e.target.value)}
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-cyan-500"
+                    >
+                      <option value="hero">{t.heroBot}</option>
+                      <option value="lift">{t.liftBot}</option>
+                      <option value="catapult">{t.catapultBot}</option>
+                      <option value="claw">{t.clawBot}</option>
+                      <option value="custom">{t.customBot}</option>
+                    </select>
+                  </div>
+
+                  {/* Minor & Major Violations */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-bold text-amber-600 dark:text-amber-400 block mb-1">
+                        {t.minorViolations}
+                      </label>
+                      <div className="flex items-center bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-500/40 rounded-xl p-1">
+                        <button
+                          type="button"
+                          onClick={() => setModalMinorViolations(Math.max(0, modalMinorViolations - 1))}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="flex-1 text-center font-mono font-bold text-sm text-slate-900 dark:text-white">
+                          {modalMinorViolations}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setModalMinorViolations(modalMinorViolations + 1)}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg bg-amber-500 text-slate-950 font-bold hover:bg-amber-400"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-rose-600 dark:text-rose-400 block mb-1">
+                        {t.majorViolations}
+                      </label>
+                      <div className="flex items-center bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-500/40 rounded-xl p-1">
+                        <button
+                          type="button"
+                          onClick={() => setModalMajorViolations(Math.max(0, modalMajorViolations - 1))}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="flex-1 text-center font-mono font-bold text-sm text-slate-900 dark:text-white">
+                          {modalMajorViolations}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setModalMajorViolations(modalMajorViolations + 1)}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg bg-rose-600 text-white font-bold hover:bg-rose-500"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div className="flex items-center justify-end gap-3 pt-3">

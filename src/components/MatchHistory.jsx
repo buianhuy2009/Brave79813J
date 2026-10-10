@@ -76,6 +76,11 @@ export default function MatchHistory({ onLoadMatchIntoCalculator, onNewMatchSave
       sessionTag: editingMatch.sessionTag,
       matchType: editingMatch.matchType,
       matchNotes: editingMatch.matchNotes,
+      matchDate: editingMatch.matchDate,
+      dateStr: editingMatch.matchDate,
+      minorViolations: Number(editingMatch.minorViolations) || 0,
+      majorViolations: Number(editingMatch.majorViolations) || 0,
+      robotType: editingMatch.robotType || '',
       skillsStopTime: Number(editingMatch.skillsStopTime) || 0
     });
     setEditingMatch(null);
@@ -331,8 +336,26 @@ export default function MatchHistory({ onLoadMatchIntoCalculator, onNewMatchSave
 
                       <span className="text-xs text-slate-400 font-mono flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
-                        {item.dateStr} {item.timeStr}
+                        {item.matchDate || item.dateStr} {item.timeStr}
                       </span>
+
+                      {item.robotType && (
+                        <span className="px-2 py-0.5 rounded-lg text-xs font-semibold bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                          🤖 {t[item.robotType] || item.robotType}
+                        </span>
+                      )}
+
+                      {item.minorViolations > 0 && (
+                        <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                          ⚠️ {item.minorViolations} Minor
+                        </span>
+                      )}
+
+                      {item.majorViolations > 0 && (
+                        <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                          🚨 {item.majorViolations} Major
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex items-baseline gap-2">
@@ -461,6 +484,57 @@ export default function MatchHistory({ onLoadMatchIntoCalculator, onNewMatchSave
                   onChange={(e) => setEditingMatch({ ...editingMatch, teamName: e.target.value })}
                   className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-slate-100"
                 />
+              </div>
+
+              {/* Match Date */}
+              <div>
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">{t.matchDate}</label>
+                <input
+                  type="date"
+                  value={editingMatch.matchDate || editingMatch.dateStr || ''}
+                  onChange={(e) => setEditingMatch({ ...editingMatch, matchDate: e.target.value })}
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-slate-100 font-mono"
+                />
+              </div>
+
+              {/* Robot Type */}
+              <div>
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">{t.robotType}</label>
+                <select
+                  value={editingMatch.robotType || 'hero'}
+                  onChange={(e) => setEditingMatch({ ...editingMatch, robotType: e.target.value })}
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-slate-100"
+                >
+                  <option value="hero">{t.heroBot}</option>
+                  <option value="lift">{t.liftBot}</option>
+                  <option value="catapult">{t.catapultBot}</option>
+                  <option value="claw">{t.clawBot}</option>
+                  <option value="custom">{t.customBot}</option>
+                </select>
+              </div>
+
+              {/* Violations */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-amber-600 dark:text-amber-400 block mb-1">{t.minorViolations}</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editingMatch.minorViolations || 0}
+                    onChange={(e) => setEditingMatch({ ...editingMatch, minorViolations: Math.max(0, parseInt(e.target.value) || 0) })}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-amber-600 dark:text-amber-400 font-mono font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-rose-600 dark:text-rose-400 block mb-1">{t.majorViolations}</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editingMatch.majorViolations || 0}
+                    onChange={(e) => setEditingMatch({ ...editingMatch, majorViolations: Math.max(0, parseInt(e.target.value) || 0) })}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-rose-600 dark:text-rose-400 font-mono font-bold"
+                  />
+                </div>
               </div>
 
               <div>

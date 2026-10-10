@@ -16,12 +16,16 @@ export function getSavedMatches() {
 
 export function saveMatch(matchData) {
   try {
-    const existing = getSavedMatches();
+    const customDate = matchData.matchDate || new Date().toISOString().slice(0, 10);
     const newMatch = {
       id: 'match_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
       timestamp: new Date().toISOString(),
-      dateStr: new Date().toLocaleDateString(),
+      matchDate: customDate,
+      dateStr: customDate,
       timeStr: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      minorViolations: Number(matchData.minorViolations) || 0,
+      majorViolations: Number(matchData.majorViolations) || 0,
+      robotType: matchData.robotType || '',
       ...matchData
     };
     const updated = [newMatch, ...existing];
