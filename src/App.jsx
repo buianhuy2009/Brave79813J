@@ -34,9 +34,9 @@ export default function App() {
     return localStorage.getItem('vexiq_theme') || 'light';
   });
 
-  // Language: 'en' or 'vi' (Default to Vietnamese 'vi' if browser is in VN or user selects)
+  // Language: 'en' or 'vi' (Default to English 'en')
   const [lang, setLang] = useState(() => {
-    return localStorage.getItem('vexiq_lang') || 'vi';
+    return localStorage.getItem('vexiq_lang') || 'en';
   });
 
   const t = translations[lang] || translations.en;
