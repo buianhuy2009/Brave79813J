@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   PenTool, 
   MoveRight, 
@@ -9,18 +9,20 @@ import {
   Trash2, 
   Download, 
   Save, 
-  FolderOpen, 
-  Sparkles, 
-  Check, 
+  Maximize2, 
+  Minimize2, 
+  RotateCw, 
   Plus, 
-  Minus,
-  Compass,
-  AlertCircle
+  Check, 
+  Compass, 
+  Sparkles, 
+  X
 } from 'lucide-react';
 import { translations } from '../constants/translations';
 
-const FIELD_WIDTH = 800;
-const FIELD_HEIGHT = 600;
+// Official VEX IQ Level Up Field dimensions matching the real image (1024 x 792)
+const FIELD_WIDTH = 1024;
+const FIELD_HEIGHT = 792;
 
 const COLORS = [
   { id: 'cyan', hex: '#06b6d4', label: 'Cyan' },
@@ -37,12 +39,12 @@ export default function StrategyBoard({ lang = 'en' }) {
   // Tools: 'pencil', 'arrow', 'waypoint', 'text', 'robot'
   const [activeTool, setActiveTool] = useState('pencil');
   const [selectedColor, setSelectedColor] = useState('#06b6d4');
-  const [brushSize, setBrushSize] = useState(4);
+  const [brushSize, setBrushSize] = useState(4); // 3 (S), 6 (M), 10 (L)
 
   // Canvas elements state
-  const [paths, setPaths] = useState([]); // Array of { type, color, size, points, ... }
-  const [waypoints, setWaypoints] = useState([]); // Array of { id, num, x, y, color }
-  const [textBoxes, setTextBoxes] = useState([]); // Array of { id, text, x, y, color, size }
+  const [paths, setPaths] = useState([]); // { type: 'freehand' | 'arrow', color, size, points, start, end }
+  const [waypoints, setWaypoints] = useState([]); // { id, num, x, y, color }
+  const [textBoxes, setTextBoxes] = useState([]); // { id, text, x, y, color, size }
   const [robotStamp, setRobotStamp] = useState(null); // { x, y, angle }
 
   // Active interaction state
@@ -51,7 +53,7 @@ export default function StrategyBoard({ lang = 'en' }) {
   const [arrowStart, setArrowStart] = useState(null);
   const [arrowCurrent, setArrowCurrent] = useState(null);
 
-  // Text input modal/inline state
+  // Text input modal state
   const [pendingTextPos, setPendingTextPos] = useState(null);
   const [inputNoteText, setInputNoteText] = useState('');
 
@@ -60,7 +62,27 @@ export default function StrategyBoard({ lang = 'en' }) {
   const [savedRoutines, setSavedRoutines] = useState([]);
   const [feedbackToast, setFeedbackToast] = useState('');
 
+  // Fullscreen state
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const containerRef = useRef(null);
   const canvasRef = useRef(null);
+  const fieldImageRef = useRef(null);
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
+
+  // Preload real field image
+  useEffect(() => {
+    const img = new Image();
+    img.src = '/assets/field_levelup.jpg';
+    img.onload = () => {
+      fieldImageRef.current = img;
+      setIsImageLoaded(true);
+    };
+    img.onerror = () => {
+      console.warn('Could not load /assets/field_levelup.jpg, falling back to vector rendering');
+      setIsImageLoaded(false);
+    };
+  }, []);
 
   // Load saved routines from localStorage
   useEffect(() => {
@@ -75,24 +97,81 @@ export default function StrategyBoard({ lang = 'en' }) {
 
   const showToast = (msg) => {
     setFeedbackToast(msg);
-    setTimeout(() => setFeedbackToast(''), 3000);
+    setTimeout(() => setFeedbackToast(''), 2500);
   };
 
-  // Redraw canvas whenever elements change
+  // Keyboard shortcuts listener
   useEffect(() => {
-    drawCanvas();
-  }, [paths, waypoints, textBoxes, robotStamp, arrowCurrent]);
+    const handleKeyDown = (e) => {
+      // Don't intercept if user is typing in an input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
-  const drawFieldBackground = (ctx) => {
-    // Foam tiles background
-    ctx.fillStyle = '#1e293b';
+      if (e.key === 'p' || e.key === 'P') setActiveTool('pencil');
+      if (e.key === 'a' || e.key === 'A') setActiveTool('arrow');
+      if (e.key === 'w' || e.key === 'W') setActiveTool('waypoint');
+      if (e.key === 't' || e.key === 'T') setActiveTool('text');
+      if (e.key === 'r' || e.key === 'R') {
+        if (activeTool === 'robot' && robotStamp) {
+          handleRotateRobot();
+        } else {
+          setActiveTool('robot');
+        }
+      }
+      if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault();
+        handleUndo();
+      }
+      if (e.key === 'Escape') {
+        if (pendingTextPos) setPendingTextPos(null);
+        if (isFullscreen) exitFullscreen();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTool, robotStamp, pendingTextPos, isFullscreen]);
+
+  // Fullscreen change listener
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!isFullscreen) {
+      if (containerRef.current?.requestFullscreen) {
+        containerRef.current.requestFullscreen().catch(() => {
+          setIsFullscreen(true);
+        });
+      } else {
+        setIsFullscreen(true);
+      }
+    } else {
+      exitFullscreen();
+    }
+  };
+
+  const exitFullscreen = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    }
+    setIsFullscreen(false);
+  };
+
+  // Fallback vector field renderer if image hasn't loaded yet
+  const drawVectorFieldFallback = (ctx) => {
+    ctx.fillStyle = '#0f172a';
     ctx.fillRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
 
     // 8 x 6 foam tile grid (1-foot squares)
     ctx.strokeStyle = '#334155';
-    ctx.lineWidth = 1;
-    const tileW = FIELD_WIDTH / 8; // 100px
-    const tileH = FIELD_HEIGHT / 6; // 100px
+    ctx.lineWidth = 1.5;
+    const tileW = FIELD_WIDTH / 8;
+    const tileH = FIELD_HEIGHT / 6;
 
     for (let c = 0; c <= 8; c++) {
       ctx.beginPath();
@@ -112,111 +191,43 @@ export default function StrategyBoard({ lang = 'en' }) {
     ctx.lineWidth = 6;
     ctx.strokeRect(3, 3, FIELD_WIDTH - 6, FIELD_HEIGHT - 6);
 
-    // Robot Starting Zones (Light green dashed lines on edges)
-    ctx.fillStyle = 'rgba(16, 185, 129, 0.08)';
-    ctx.fillRect(10, 10, tileW * 2 - 20, tileH * 2 - 20);
-    ctx.fillRect(FIELD_WIDTH - tileW * 2 + 10, FIELD_HEIGHT - tileH * 2 + 10, tileW * 2 - 20, tileH * 2 - 20);
-
-    ctx.fillStyle = 'rgba(16, 185, 129, 0.5)';
-    ctx.font = 'bold 11px sans-serif';
-    ctx.fillText('START ZONE A', 20, 30);
-    ctx.fillText('START ZONE B', FIELD_WIDTH - tileW * 2 + 20, FIELD_HEIGHT - 20);
-
-    // BLUE PYRAMID (Left side, centered vertically)
-    ctx.fillStyle = 'rgba(59, 130, 246, 0.25)';
-    ctx.strokeStyle = '#3b82f6';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.roundRect(tileW * 1.5, tileH * 1.5, tileW * 2, tileH * 3, 16);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#60a5fa';
-    ctx.font = 'bold 12px sans-serif';
-    ctx.fillText('BLUE PYRAMID (L1-L3)', tileW * 1.5 + 15, tileH * 1.5 + 24);
-
-    // RED PYRAMID (Right side, centered vertically)
-    ctx.fillStyle = 'rgba(239, 68, 68, 0.25)';
-    ctx.strokeStyle = '#ef4444';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.roundRect(tileW * 4.5, tileH * 1.5, tileW * 2, tileH * 3, 16);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#f87171';
-    ctx.font = 'bold 12px sans-serif';
-    ctx.fillText('RED PYRAMID (L1-L3)', tileW * 4.5 + 20, tileH * 1.5 + 24);
-
-    // LEVEL 4 TOP GOAL (Center elevated goal)
-    ctx.fillStyle = 'rgba(234, 179, 8, 0.3)';
+    // Level 4 Goal & Pyramids
+    ctx.fillStyle = 'rgba(234, 179, 8, 0.2)';
     ctx.strokeStyle = '#eab308';
     ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.roundRect(FIELD_WIDTH / 2 - 45, FIELD_HEIGHT / 2 - 45, 90, 90, 14);
-    ctx.fill();
-    ctx.stroke();
+    ctx.strokeRect(FIELD_WIDTH / 2 - 50, FIELD_HEIGHT / 2 - 50, 100, 100);
 
     ctx.fillStyle = '#facc15';
-    ctx.font = 'bold 12px sans-serif';
+    ctx.font = 'bold 14px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('L4 TOP GOAL', FIELD_WIDTH / 2, FIELD_HEIGHT / 2 - 8);
-    ctx.font = '10px sans-serif';
-    ctx.fillText('(Yellow 16 pts)', FIELD_WIDTH / 2, FIELD_HEIGHT / 2 + 12);
-    ctx.textAlign = 'left';
-
-    // BEANBAG STARTING POSITIONS (Official layout indicators)
-    // Red bags (16 dots)
-    ctx.fillStyle = '#ef4444';
-    [
-      [500, 100], [550, 100], [600, 100], [650, 100],
-      [500, 500], [550, 500], [600, 500], [650, 500],
-      [700, 200], [700, 250], [700, 350], [700, 400],
-      [470, 250], [470, 350], [630, 250], [630, 350]
-    ].forEach(([bx, by]) => {
-      ctx.beginPath();
-      ctx.arc(bx, by, 6, 0, Math.PI * 2);
-      ctx.fill();
-    });
-
-    // Blue bags (16 dots)
-    ctx.fillStyle = '#3b82f6';
-    [
-      [150, 100], [200, 100], [250, 100], [300, 100],
-      [150, 500], [200, 500], [250, 500], [300, 500],
-      [100, 200], [100, 250], [100, 350], [100, 400],
-      [170, 250], [170, 350], [330, 250], [330, 350]
-    ].forEach(([bx, by]) => {
-      ctx.beginPath();
-      ctx.arc(bx, by, 6, 0, Math.PI * 2);
-      ctx.fill();
-    });
-
-    // Yellow bags (6 dots)
-    ctx.fillStyle = '#eab308';
-    [
-      [400, 140], [400, 200], [400, 400], [400, 460],
-      [280, 300], [520, 300]
-    ].forEach(([bx, by]) => {
-      ctx.beginPath();
-      ctx.arc(bx, by, 7.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-    });
+    ctx.fillText('L4 TOP GOAL', FIELD_WIDTH / 2, FIELD_HEIGHT / 2 + 5);
   };
 
-  const drawCanvas = () => {
+  // Main draw canvas routine
+  const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    // Clear and draw background
     ctx.clearRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
-    drawFieldBackground(ctx);
 
-    // 1. Draw Paths (Freehand & Arrows)
+    // 1. Draw Actual Field Picture
+    if (fieldImageRef.current && isImageLoaded) {
+      try {
+        ctx.drawImage(fieldImageRef.current, 0, 0, FIELD_WIDTH, FIELD_HEIGHT);
+      } catch (e) {
+        drawVectorFieldFallback(ctx);
+      }
+    } else {
+      drawVectorFieldFallback(ctx);
+    }
+
+    // Subtle dark vignette/border around the field
+    ctx.strokeStyle = 'rgba(15, 23, 42, 0.8)';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(2, 2, FIELD_WIDTH - 4, FIELD_HEIGHT - 4);
+
+    // 2. Draw Paths (Freehand & Arrows)
     paths.forEach(p => {
       ctx.strokeStyle = p.color;
       ctx.lineWidth = p.size;
@@ -240,82 +251,110 @@ export default function StrategyBoard({ lang = 'en' }) {
       drawArrow(ctx, arrowStart.x, arrowStart.y, arrowCurrent.x, arrowCurrent.y, selectedColor, brushSize);
     }
 
-    // 2. Draw Robot Stamp (12" scaled square robot box)
+    // 3. Draw Robot Stamp (12" scaled square robot box ~ 75px)
     if (robotStamp) {
       ctx.save();
       ctx.translate(robotStamp.x, robotStamp.y);
-      ctx.rotate(robotStamp.angle || 0);
+      ctx.rotate((robotStamp.angle || 0) * (Math.PI / 180));
 
-      const rSize = 55; // ~12 inches scaled
-      ctx.fillStyle = 'rgba(6, 182, 212, 0.4)';
+      const rSize = 72; // Scaled ~12 inches on 1024px canvas
+      
+      // Robot chassis
+      ctx.fillStyle = 'rgba(6, 182, 212, 0.45)';
       ctx.strokeStyle = '#06b6d4';
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 3.5;
       ctx.beginPath();
-      ctx.roundRect(-rSize / 2, -rSize / 2, rSize, rSize, 8);
+      ctx.roundRect(-rSize / 2, -rSize / 2, rSize, rSize, 10);
       ctx.fill();
       ctx.stroke();
 
-      // Heading indicator arrow
+      // Omni wheels accent (left & right sides)
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(-rSize / 2 - 4, -rSize / 2 + 10, 5, 20);
+      ctx.fillRect(-rSize / 2 - 4, rSize / 2 - 30, 5, 20);
+      ctx.fillRect(rSize / 2 - 1, -rSize / 2 + 10, 5, 20);
+      ctx.fillRect(rSize / 2 - 1, rSize / 2 - 30, 5, 20);
+
+      // Heading indicator triangle (Pointing UP)
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.moveTo(0, -rSize / 2 + 6);
-      ctx.lineTo(10, 4);
-      ctx.lineTo(-10, 4);
+      ctx.moveTo(0, -rSize / 2 + 8);
+      ctx.lineTo(12, 6);
+      ctx.lineTo(-12, 6);
       ctx.closePath();
       ctx.fill();
 
+      // Robot Label
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 9px sans-serif';
+      ctx.font = '900 11px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('ROBOT', 0, 16);
+      ctx.fillText('ROBOT', 0, 22);
+
       ctx.restore();
     }
 
-    // 3. Draw Numbered Waypoints (① ② ③)
+    // 4. Draw Numbered Waypoints (① ② ③)
     waypoints.forEach(wp => {
       ctx.save();
+      
+      // Shadow / glow
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+      ctx.shadowBlur = 8;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 2;
+
+      // Circle pin
       ctx.fillStyle = wp.color || '#06b6d4';
       ctx.beginPath();
-      ctx.arc(wp.x, wp.y, 14, 0, Math.PI * 2);
+      ctx.arc(wp.x, wp.y, 16, 0, Math.PI * 2);
       ctx.fill();
+      
       ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = 3;
       ctx.stroke();
 
+      // Number inside
+      ctx.shadowColor = 'transparent';
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 12px sans-serif';
+      ctx.font = '900 14px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(wp.num, wp.x, wp.y);
       ctx.restore();
     });
 
-    // 4. Draw Text Boxes / Annotations
+    // 5. Draw Text Boxes / Annotations
     textBoxes.forEach(tb => {
       ctx.save();
-      ctx.font = `bold ${tb.size || 13}px sans-serif`;
+      ctx.font = `bold ${tb.size || 14}px sans-serif`;
       const textWidth = ctx.measureText(tb.text).width;
-      const pad = 6;
+      const padX = 8;
+      const padY = 5;
 
       // Label background pill
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
       ctx.strokeStyle = tb.color || '#ffffff';
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.roundRect(tb.x - pad, tb.y - 14 - pad, textWidth + pad * 2, 22 + pad, 6);
+      ctx.roundRect(tb.x - padX, tb.y - 14 - padY, textWidth + padX * 2, 24 + padY, 8);
       ctx.fill();
       ctx.stroke();
 
-      // Text
+      // Text inside
       ctx.fillStyle = tb.color || '#ffffff';
       ctx.textBaseline = 'top';
-      ctx.fillText(tb.text, tb.x, tb.y - 12);
+      ctx.fillText(tb.text, tb.x, tb.y - 11);
       ctx.restore();
     });
-  };
+  }, [isImageLoaded, paths, waypoints, textBoxes, robotStamp, activeTool, arrowStart, arrowCurrent, selectedColor, brushSize]);
+
+  // Redraw canvas whenever elements change or image finishes loading
+  useEffect(() => {
+    drawCanvas();
+  }, [drawCanvas]);
 
   const drawArrow = (ctx, fromx, fromy, tox, toy, color, size) => {
-    const headlen = 16;
+    const headlen = 18;
     const dx = tox - fromx;
     const dy = toy - fromy;
     const angle = Math.atan2(dy, dx);
@@ -326,7 +365,7 @@ export default function StrategyBoard({ lang = 'en' }) {
     ctx.lineWidth = size;
     ctx.lineCap = 'round';
 
-    // Line
+    // Main line
     ctx.beginPath();
     ctx.moveTo(fromx, fromy);
     ctx.lineTo(tox, toy);
@@ -342,6 +381,7 @@ export default function StrategyBoard({ lang = 'en' }) {
     ctx.restore();
   };
 
+  // Convert client viewport click to canvas coordinates accurately
   const getCanvasCoords = (e) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
@@ -373,7 +413,8 @@ export default function StrategyBoard({ lang = 'en' }) {
       const nextNum = waypoints.length + 1;
       setWaypoints([...waypoints, { id: 'wp_' + Date.now(), num: nextNum, x: pos.x, y: pos.y, color: selectedColor }]);
     } else if (activeTool === 'robot') {
-      setRobotStamp({ x: pos.x, y: pos.y, angle: 0 });
+      // Place robot at location with initial 0 degree angle
+      setRobotStamp({ x: pos.x, y: pos.y, angle: robotStamp?.angle || 0 });
     } else if (activeTool === 'text') {
       setPendingTextPos(pos);
     }
@@ -414,7 +455,6 @@ export default function StrategyBoard({ lang = 'en' }) {
       setPaths([...paths, { type: 'freehand', points: currentPoints, color: selectedColor, size: brushSize }]);
       setCurrentPoints([]);
     } else if (activeTool === 'arrow' && arrowStart && arrowCurrent) {
-      // Only record if dragged at least 15px
       const dist = Math.hypot(arrowCurrent.x - arrowStart.x, arrowCurrent.y - arrowStart.y);
       if (dist > 15) {
         setPaths([...paths, { type: 'arrow', start: arrowStart, end: arrowCurrent, color: selectedColor, size: brushSize }]);
@@ -437,10 +477,20 @@ export default function StrategyBoard({ lang = 'en' }) {
       x: pendingTextPos.x,
       y: pendingTextPos.y,
       color: selectedColor,
-      size: 13
+      size: 14
     }]);
     setInputNoteText('');
     setPendingTextPos(null);
+  };
+
+  // Rotate Robot by 45 degrees
+  const handleRotateRobot = () => {
+    if (!robotStamp) {
+      showToast(isVi ? 'Hãy nhấp vào sân để đặt Robot trước!' : 'Click field to place robot first!');
+      return;
+    }
+    const newAngle = ((robotStamp.angle || 0) + 45) % 360;
+    setRobotStamp({ ...robotStamp, angle: newAngle });
   };
 
   // Undo last action
@@ -467,7 +517,7 @@ export default function StrategyBoard({ lang = 'en' }) {
     }
   };
 
-  // Export 1-Click High-Res PNG
+  // Export 1-Click High-Res PNG with Actual Field Graphic
   const handleExportPNG = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -509,290 +559,353 @@ export default function StrategyBoard({ lang = 'en' }) {
     setWaypoints(routine.waypoints || []);
     setTextBoxes(routine.textBoxes || []);
     setRobotStamp(routine.robotStamp || null);
-    showToast(isVi ? `Đã nạp chiến thuật "${routine.name}"!` : `Loaded plan "${routine.name}"!`);
+    showToast(isVi ? `Đã nạp "${routine.name}"!` : `Loaded "${routine.name}"!`);
+  };
+
+  // Create new blank plan
+  const handleNewPlan = () => {
+    setRoutineName(`Auto Routine ${savedRoutines.length + 1}`);
+    setPaths([]);
+    setWaypoints([]);
+    setTextBoxes([]);
+    setRobotStamp(null);
+    showToast(isVi ? 'Đã tạo chiến thuật mới.' : 'Started new plan.');
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn pb-12">
+    <div 
+      ref={containerRef}
+      className={`flex flex-col min-h-0 select-none ${
+        isFullscreen 
+          ? 'fixed inset-0 z-50 bg-slate-950 p-2 sm:p-3 overflow-hidden' 
+          : 'flex-1 h-[calc(100vh-4.5rem)]'
+      }`}
+    >
       
-      {/* Top Banner */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/30">
-              6' x 8' Official Field
-            </span>
-            <span className="text-xs text-slate-400 font-mono">Team Brave #79813J</span>
-          </div>
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-            <Compass className="w-6 h-6 text-cyan-500" />
-            <span>{t.strategyBoard}</span>
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-2xl">
-            {t.strategyDesc}
-          </p>
-        </div>
-
-        {/* Action Controls: Routine Name, Save, Export PNG */}
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            type="text"
-            value={routineName}
-            onChange={(e) => setRoutineName(e.target.value)}
-            placeholder={t.routineName}
-            className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500 w-44"
-          />
-
-          <button
-            type="button"
-            onClick={handleSaveRoutine}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 text-xs font-bold transition-all shadow-sm"
-            title={t.saveRoutine}
-          >
-            <Save className="w-4 h-4 text-cyan-500" />
-            <span>{t.saveRoutine}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleExportPNG}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs shadow-md shadow-cyan-500/20 transition-all hover:scale-105 active:scale-95"
-            title={t.exportPNG}
-          >
-            <Download className="w-4 h-4 text-slate-950" />
-            <span>{t.exportPNG}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Main Drawing Suite */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 sm:p-6 shadow-sm space-y-4">
+      {/* Sleek Unified Toolbar Header (Fits in ~85px total height, zero vertical scroll) */}
+      <div className="flex-shrink-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-2 sm:p-2.5 shadow-sm mb-2 space-y-1.5">
         
-        {/* Tool Palette Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
+        {/* Tier 1: Routine Management + Export + Fullscreen */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          
+          {/* Left: Title + Routine Name Input + Quick Load */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/30 text-xs font-black">
+              <Compass className="w-3.5 h-3.5 text-cyan-500" />
+              <span>{t.strategyBoard}</span>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <input
+                type="text"
+                value={routineName}
+                onChange={(e) => setRoutineName(e.target.value)}
+                placeholder={t.routineName}
+                className="bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-2.5 py-1 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500 w-36 sm:w-44"
+              />
+
+              <button
+                type="button"
+                onClick={handleSaveRoutine}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-cyan-500 hover:text-slate-950 dark:hover:bg-cyan-500 dark:hover:text-slate-950 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all border border-slate-200 dark:border-slate-700"
+                title={t.saveRoutine}
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{t.saveRoutine}</span>
+              </button>
+
+              {/* Saved routines dropdown */}
+              {savedRoutines.length > 0 && (
+                <select
+                  value=""
+                  onChange={(e) => {
+                    const sel = savedRoutines.find(r => r.id === e.target.value);
+                    if (sel) handleLoadRoutine(sel);
+                  }}
+                  className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-1 text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-cyan-500 max-w-[130px]"
+                >
+                  <option value="" disabled>{t.selectRoutine || 'Select Plan...'}</option>
+                  {savedRoutines.map(r => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              <button
+                type="button"
+                onClick={handleNewPlan}
+                className="p-1 sm:px-2 sm:py-1 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold transition-all"
+                title={t.newRoutine || 'New Plan'}
+              >
+                <Plus className="w-3.5 h-3.5 sm:hidden" />
+                <span className="hidden sm:inline">+ {t.newRoutine || 'New'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Right: Export PNG + Fullscreen toggle */}
+          <div className="flex items-center gap-1.5 ml-auto">
+            <button
+              type="button"
+              onClick={handleExportPNG}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs shadow-sm transition-all hover:scale-105 active:scale-95"
+              title={t.exportPNG}
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>{t.exportPNG}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-black transition-all border border-slate-200 dark:border-slate-700"
+              title={isFullscreen ? (t.exitFullscreen || 'Exit Fullscreen') : (t.fullscreen || 'Fullscreen (F)')}
+            >
+              {isFullscreen ? (
+                <>
+                  <Minimize2 className="w-3.5 h-3.5 text-cyan-500" />
+                  <span className="hidden sm:inline">{t.exitFullscreen || 'Exit'}</span>
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="w-3.5 h-3.5 text-cyan-500" />
+                  <span className="hidden sm:inline">{t.fullscreen || 'Fullscreen'}</span>
+                </>
+              )}
+            </button>
+          </div>
+
+        </div>
+
+        {/* Tier 2: Tool Palette + Colors + Stroke + Undo + Clear */}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 dark:border-slate-800/80 pt-1.5">
           
           {/* Tool selector buttons */}
-          <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800">
             <button
               type="button"
               onClick={() => setActiveTool('pencil')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
                 activeTool === 'pencil'
                   ? 'bg-cyan-500 text-slate-950 shadow-sm'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
+              title="Pencil Tool (P)"
             >
-              <PenTool className="w-3.5 h-3.5" />
+              <PenTool className="w-3 h-3" />
               <span>{t.pencilTool}</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTool('arrow')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
                 activeTool === 'arrow'
                   ? 'bg-cyan-500 text-slate-950 shadow-sm'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
+              title="Directional Arrow (A)"
             >
-              <MoveRight className="w-3.5 h-3.5" />
+              <MoveRight className="w-3 h-3" />
               <span>{t.arrowTool}</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTool('waypoint')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
                 activeTool === 'waypoint'
                   ? 'bg-cyan-500 text-slate-950 shadow-sm'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
+              title="Numbered Waypoint (W)"
             >
-              <MapPin className="w-3.5 h-3.5" />
+              <MapPin className="w-3 h-3" />
               <span>{t.waypointTool}</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTool('text')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
                 activeTool === 'text'
                   ? 'bg-cyan-500 text-slate-950 shadow-sm'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
+              title="Text Note (T)"
             >
-              <Type className="w-3.5 h-3.5" />
+              <Type className="w-3 h-3" />
               <span>{t.textTool}</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTool('robot')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
                 activeTool === 'robot'
                   ? 'bg-cyan-500 text-slate-950 shadow-sm'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
+              title="Robot Stamp (R)"
             >
-              <Bot className="w-3.5 h-3.5" />
+              <Bot className="w-3 h-3" />
               <span>{t.robotTool}</span>
             </button>
           </div>
 
-          {/* Color Palette */}
+          {/* Color Palette + Stroke Thickness */}
           <div className="flex items-center gap-1.5">
-            {COLORS.map(c => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => setSelectedColor(c.hex)}
-                style={{ backgroundColor: c.hex }}
-                className={`w-6 h-6 rounded-full border-2 transition-all ${
-                  selectedColor === c.hex ? 'border-white scale-125 shadow-md' : 'border-transparent opacity-80 hover:opacity-100'
-                }`}
-                title={c.label}
-              />
-            ))}
+            <div className="flex items-center gap-1">
+              {COLORS.map(c => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setSelectedColor(c.hex)}
+                  style={{ backgroundColor: c.hex }}
+                  className={`w-5 h-5 rounded-full border transition-all ${
+                    selectedColor === c.hex ? 'border-white scale-125 shadow-sm' : 'border-slate-600/40 opacity-80 hover:opacity-100'
+                  }`}
+                  title={c.label}
+                />
+              ))}
+            </div>
 
             {/* Thickness selector */}
-            <div className="flex items-center gap-1 ml-2 bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
-              {[2, 4, 7].map(sz => (
+            <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-950 p-0.5 rounded-lg border border-slate-200 dark:border-slate-800 ml-1">
+              {[3, 6, 10].map(sz => (
                 <button
                   key={sz}
                   type="button"
                   onClick={() => setBrushSize(sz)}
-                  className={`w-6 h-6 rounded-lg text-xs font-bold flex items-center justify-center transition-all ${
+                  className={`w-5 h-5 rounded text-[10px] font-black flex items-center justify-center transition-all ${
                     brushSize === sz ? 'bg-cyan-500 text-slate-950' : 'text-slate-500'
                   }`}
                 >
-                  {sz === 2 ? 'S' : sz === 4 ? 'M' : 'L'}
+                  {sz === 3 ? 'S' : sz === 6 ? 'M' : 'L'}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Quick Undo & Clear */}
-          <div className="flex items-center gap-2">
+          {/* Rotate Robot, Undo & Clear */}
+          <div className="flex items-center gap-1">
+            {robotStamp && (
+              <button
+                type="button"
+                onClick={handleRotateRobot}
+                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-cyan-600 dark:text-cyan-400 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold transition-all"
+                title={t.rotateRobot || 'Rotate Robot (+45°)'}
+              >
+                <RotateCw className="w-3 h-3" />
+                <span className="text-[10px]">{robotStamp.angle || 0}°</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={handleUndo}
-              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-cyan-500 text-xs font-semibold"
-              title={t.undoTool}
+              className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-cyan-500 text-xs font-semibold"
+              title="Undo (Ctrl+Z)"
             >
-              <Undo2 className="w-4 h-4" />
+              <Undo2 className="w-3.5 h-3.5" />
             </button>
+
             <button
               type="button"
               onClick={handleClear}
-              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/40 text-xs font-semibold"
+              className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/40 text-xs font-semibold"
               title={t.clearCanvas}
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
 
         </div>
 
-        {/* Instructions banner for active tool */}
-        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950/60 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-cyan-500" />
-            <span>
-              {activeTool === 'pencil' && (isVi ? 'Nhấp giữ chuột/ngón tay để vẽ tự do đường di chuyển.' : 'Click and drag to sketch freehand robot paths.')}
-              {activeTool === 'arrow' && (isVi ? 'Kéo từ điểm đầu sang điểm cuối để vẽ mũi tên chỉ hướng.' : 'Drag from start to end to draw directional motion arrows.')}
-              {activeTool === 'waypoint' && (isVi ? 'Nhấp vào sân để đặt điểm mốc số thứ tự (① ② ③...).' : 'Click anywhere to drop numbered sequence waypoints (① ② ③...).')}
-              {activeTool === 'text' && (isVi ? 'Nhấp vào sân để thêm ghi chú chữ.' : 'Click on the field to place an annotation text box.')}
-              {activeTool === 'robot' && (isVi ? 'Nhấp vào sân để đặt biểu tượng Robot kích thước chuẩn 12".' : 'Click to place a scaled 12" x 12" Robot box.')}
-            </span>
-          </div>
-          <span className="font-mono text-[11px] text-slate-400">800 × 600 px (4:3)</span>
+      </div>
+
+      {/* Main Responsive Field Canvas Container (Occupies 100% of remaining vertical space, NEVER scrolls) */}
+      <div className="flex-1 min-h-0 relative flex items-center justify-center p-1 sm:p-2 bg-slate-900/60 dark:bg-slate-950/90 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-inner">
+        
+        {/* Canvas Element automatically scaled using object-contain & aspect ratio */}
+        <canvas
+          ref={canvasRef}
+          width={FIELD_WIDTH}
+          height={FIELD_HEIGHT}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={handlePointerUp}
+          style={{
+            maxHeight: '100%',
+            maxWidth: '100%',
+            aspectRatio: '1024 / 792'
+          }}
+          className="w-auto h-auto max-w-full max-h-full object-contain rounded-xl shadow-2xl border border-slate-700/60 cursor-crosshair touch-none select-none block"
+        />
+
+        {/* Floating Quick Action Helper Badge */}
+        <div className="absolute bottom-3 left-3 bg-slate-900/80 backdrop-blur-md px-2.5 py-1 rounded-xl border border-slate-700/50 text-[11px] font-semibold text-slate-300 pointer-events-none flex items-center gap-2">
+          <Sparkles className="w-3 h-3 text-cyan-400" />
+          <span>
+            {activeTool === 'pencil' && (isVi ? 'Nhấp & kéo để vẽ đường đi' : 'Drag to draw paths')}
+            {activeTool === 'arrow' && (isVi ? 'Kéo để vẽ mũi tên hướng' : 'Drag to draw directional arrow')}
+            {activeTool === 'waypoint' && (isVi ? 'Nhấp để đặt điểm mốc ① ②' : 'Click to drop waypoint ① ②')}
+            {activeTool === 'text' && (isVi ? 'Nhấp để đặt ghi chú chữ' : 'Click to add text note')}
+            {activeTool === 'robot' && (isVi ? 'Nhấp để đặt Robot 12" (bấm R xoay)' : 'Click to place 12" robot (R to rotate)')}
+          </span>
+          <span className="text-slate-500 font-mono text-[10px] hidden sm:inline">| 6\' × 8\' Official Field</span>
         </div>
 
-        {/* Interactive Canvas Field Container */}
-        <div className="relative rounded-2xl overflow-hidden border-2 border-slate-800 shadow-2xl bg-slate-950 select-none touch-none">
-          <canvas
-            ref={canvasRef}
-            width={FIELD_WIDTH}
-            height={FIELD_HEIGHT}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            className="w-full h-auto cursor-crosshair block"
-          />
-
-          {/* Modal / Dialog to Add Text Note when clicked */}
-          {pendingTextPos && (
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-              <form onSubmit={handleConfirmTextNote} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl space-y-3 max-w-sm w-full">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <Type className="w-4 h-4 text-cyan-500" />
-                    <span>{t.textTool}</span>
-                  </h4>
-                  <button type="button" onClick={() => setPendingTextPos(null)} className="text-slate-400 hover:text-white">
-                    ×
-                  </button>
-                </div>
-                <input
-                  type="text"
-                  autoFocus
-                  placeholder={t.enterNoteText}
-                  value={inputNoteText}
-                  onChange={(e) => setInputNoteText(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
-                />
-                <div className="flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPendingTextPos(null)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-1.5 rounded-lg text-xs font-bold bg-cyan-500 text-slate-950 shadow-sm"
-                  >
-                    Place Note
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-        </div>
-
-        {/* Saved Routines Browser */}
-        {savedRoutines.length > 0 && (
-          <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-2">
-            <span className="text-xs font-bold text-slate-500 block uppercase tracking-wider">
-              {isVi ? 'Các chiến thuật đã lưu:' : 'Saved Strategies on Device:'}
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {savedRoutines.map(r => (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => handleLoadRoutine(r)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
-                    routineName === r.name
-                      ? 'bg-cyan-500 text-slate-950 border-cyan-500 shadow-sm'
-                      : 'bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-400'
-                  }`}
-                >
-                  📍 {r.name}
+        {/* Modal / Dialog to Add Text Note when clicked */}
+        {pendingTextPos && (
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-30">
+            <form onSubmit={handleConfirmTextNote} className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl space-y-3 max-w-xs w-full animate-fadeIn">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <Type className="w-3.5 h-3.5 text-cyan-500" />
+                  <span>{t.textTool}</span>
+                </h4>
+                <button type="button" onClick={() => setPendingTextPos(null)} className="text-slate-400 hover:text-white">
+                  <X className="w-4 h-4" />
                 </button>
-              ))}
-            </div>
+              </div>
+              <input
+                type="text"
+                autoFocus
+                placeholder={t.enterNoteText}
+                value={inputNoteText}
+                onChange={(e) => setInputNoteText(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500 font-medium"
+              />
+              <div className="flex justify-end gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setPendingTextPos(null)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-3 py-1 rounded-lg text-xs font-bold bg-cyan-500 text-slate-950 shadow-sm"
+                >
+                  Place Note
+                </button>
+              </div>
+            </form>
           </div>
         )}
 
       </div>
 
-      {/* Floating Notification */}
+      {/* Floating Notification Toast */}
       {feedbackToast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-slate-900 text-white border border-cyan-500/50 shadow-2xl shadow-cyan-500/20 animate-bounce">
-          <Check className="w-5 h-5 text-cyan-400" />
-          <span className="text-xs sm:text-sm font-bold">{feedbackToast}</span>
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 text-white border border-cyan-500/50 shadow-2xl shadow-cyan-500/20 animate-bounce">
+          <Check className="w-4 h-4 text-cyan-400" />
+          <span className="text-xs font-bold">{feedbackToast}</span>
         </div>
       )}
 

@@ -198,6 +198,13 @@ export const translations = {
     colorRed: "Red",
     colorBlue: "Blue",
     colorWhite: "White",
+    fullscreen: "Full Screen",
+    exitFullscreen: "Exit Full Screen",
+    rotateRobot: "Rotate Robot (+45°)",
+    shortcutsHint: "Shortcuts: P (Pencil) • A (Arrow) • W (Waypoint) • T (Text) • R (Robot) • F (Fullscreen) • Ctrl+Z (Undo)",
+    selectRoutine: "Select saved plan...",
+    newRoutine: "New Plan",
+    deleteRoutine: "Delete Plan",
 
     // Share Matches
     shareMatches: "Share Match History",
@@ -418,6 +425,13 @@ export const translations = {
     colorRed: "Đỏ",
     colorBlue: "Xanh lam",
     colorWhite: "Trắng",
+    fullscreen: "Toàn màn hình",
+    exitFullscreen: "Thu nhỏ",
+    rotateRobot: "Xoay Robot (+45°)",
+    shortcutsHint: "Phím tắt: P (Bút) • A (Mũi tên) • W (Điểm mốc) • T (Ghi chú) • R (Robot) • F (Toàn màn hình) • Ctrl+Z (Hoàn tác)",
+    selectRoutine: "Chọn chiến thuật đã lưu...",
+    newRoutine: "Tạo mới",
+    deleteRoutine: "Xóa chiến thuật",
 
     // Share Matches
     shareMatches: "Chia sẻ lịch sử đấu",

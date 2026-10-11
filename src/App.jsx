@@ -245,7 +245,11 @@ export default function App() {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6">
+      <main className={
+        activeTab === 'strategy'
+          ? "flex-1 w-full max-w-[1800px] mx-auto px-2 sm:px-3 py-1 flex flex-col min-h-0"
+          : "flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6"
+      }>
         {/* Home View */}
         {activeTab === 'home' && (
           <Home
@@ -298,28 +302,30 @@ export default function App() {
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-900 py-6 text-center text-xs text-slate-500">
-        <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="font-extrabold text-slate-700 dark:text-slate-300">VEX IQ Level Up (Manual v2.1)</span>
-            <span>•</span>
-            <span className="text-cyan-600 dark:text-cyan-400 font-bold">Team Brave 79813J (Vietnam 🇻🇳)</span>
+      {/* Footer - Hidden on strategy view to keep board and toolbar 100% on one screen without scrolling */}
+      {activeTab !== 'strategy' && (
+        <footer className="bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-900 py-6 text-center text-xs text-slate-500">
+          <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="font-extrabold text-slate-700 dark:text-slate-300">VEX IQ Level Up (Manual v2.1)</span>
+              <span>•</span>
+              <span className="text-cyan-600 dark:text-cyan-400 font-bold">Team Brave 79813J (Vietnam 🇻🇳)</span>
+            </div>
+            <div className="flex items-center gap-3 text-slate-400">
+              <span>Crafted with modern UI/UX for Robotics Students Worldwide</span>
+              <span>•</span>
+              <a 
+                href="https://github.com/buianhuy2009/Brave79813J"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-cyan-600 dark:text-cyan-400 font-bold hover:underline inline-flex items-center gap-1"
+              >
+                GitHub (Open Source)
+              </a>
+            </div>
           </div>
-          <div className="flex items-center gap-3 text-slate-400">
-            <span>Crafted with modern UI/UX for Robotics Students Worldwide</span>
-            <span>•</span>
-            <a 
-              href="https://github.com/buianhuy2009/Brave79813J"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-cyan-600 dark:text-cyan-400 font-bold hover:underline inline-flex items-center gap-1"
-            >
-              GitHub (Open Source)
-            </a>
-          </div>
-        </div>
-      </footer>
+        </footer>
+      )}
 
       {/* Rules Modal */}
       <RulesModal isOpen={isRulesOpen} onClose={() => setIsRulesOpen(false)} lang={lang} />
