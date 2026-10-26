@@ -19,7 +19,8 @@ import {
   FileText,
   Code2,
   ExternalLink,
-  Compass
+  Compass,
+  Radio
 } from 'lucide-react';
 import { GAME_INFO } from '../constants/rules';
 import { translations } from '../constants/translations';
@@ -85,6 +86,19 @@ export default function Home({ onNavigate, lang = 'en' }) {
             >
               <Clock className="w-4 h-4 text-cyan-500" />
               <span>{t.launchTimer}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onNavigate('live-events')}
+              className="flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-400 hover:to-amber-400 text-white font-extrabold text-sm shadow-md shadow-rose-500/20 transition-all hover:scale-105 active:scale-95"
+            >
+              <Radio className="w-4 h-4 text-white animate-pulse" />
+              <span>{t.navLiveEvents || (isVi ? 'Giải Đấu Trực Tiếp' : 'Live Events')}</span>
+              <span className="flex h-2 w-2 relative ml-0.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+              </span>
             </button>
 
             <button
@@ -279,6 +293,50 @@ export default function Home({ onNavigate, lang = 'en' }) {
         </div>
       </section>
 
+      {/* 2.5 FEATURED LIVE EVENTS BANNER */}
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-rose-500/10 via-amber-500/10 to-cyan-500/10 dark:from-rose-950/40 dark:via-slate-900 dark:to-cyan-950/30 border-2 border-rose-500/30 dark:border-rose-500/20 p-6 sm:p-8 shadow-xl shadow-rose-500/5">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="space-y-3 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-500/30 text-xs font-black uppercase tracking-wider">
+              <Radio className="w-3.5 h-3.5 animate-pulse" />
+              <span>{isVi ? 'TÍNH NĂNG MỚI • ROBOTEVENTS V2' : 'NEW FEATURE • ROBOTEVENTS V2'}</span>
+            </div>
+            <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+              {t.liveEventsBannerTitle || (isVi ? 'Trung Tâm Giải Đấu Trực Tiếp & Phân Tích Đội Tuyển' : 'Live Tournament & Scouting Station')}
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+              {t.liveEventsBannerSubtitle || (isVi 
+                ? 'Tự động tải các giải đấu tại Việt Nam, theo dõi lịch đấu hợp tác, nhận chuông cảnh báo ra sân, tra cứu chỉ số OPR đồng đội và giả lập thứ hạng thế giới ngay trên bàn kỹ thuật pit.' 
+                : 'Automatic Vietnam tournament discovery, cooperative alliance tracking (no red/blue defect), Web Audio queue alerts, cooperative OPR ratings, and World Skills rank simulation.')}
+            </p>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/80 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200">
+                🇻🇳 {isVi ? 'Tự động nhận diện giải VN' : 'Vietnam Auto-Pull'}
+              </span>
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/80 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200">
+                🤝 {isVi ? 'Điểm liên minh hợp tác' : 'Cooperative Alliance OPR'}
+              </span>
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/80 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200">
+                🔔 {isVi ? 'Báo chuông lên sân' : 'Audio Queue Alerts'}
+              </span>
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/80 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200">
+                🎯 {isVi ? 'Giả lập Skills toàn cầu' : 'World Skills Simulator'}
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onNavigate('live-events')}
+            className="flex items-center gap-2 px-6 py-4 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-400 hover:to-amber-400 text-white font-black text-sm shadow-lg shadow-rose-500/25 transition-all hover:scale-105 active:scale-95 shrink-0"
+          >
+            <Radio className="w-4 h-4 animate-pulse" />
+            <span>{t.liveEventsExploreBtn || (isVi ? 'Vào Xem Giải Đấu' : 'Open Live Hub')}</span>
+            <ArrowRight className="w-4 h-4 ml-0.5" />
+          </button>
+        </div>
+      </section>
+
       {/* 3. CORE PLATFORM FEATURES GRID */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
@@ -393,6 +451,33 @@ export default function Home({ onNavigate, lang = 'en' }) {
             </p>
             <div className="mt-4 flex items-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400">
               <span>{isVi ? 'Mở sổ tay luật đấu' : 'Open Game Manual'}</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+
+          {/* Card 5: Live Events */}
+          <div 
+            onClick={() => onNavigate('live-events')}
+            className="group cursor-pointer bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm hover:border-rose-500/50 hover:shadow-lg hover:shadow-rose-500/10 transition-all transform hover:-translate-y-1 relative overflow-hidden md:col-span-2"
+          >
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-rose-100 dark:bg-rose-500/15 flex items-center justify-center text-rose-600 dark:text-rose-400 group-hover:scale-110 transition-transform">
+                <Radio className="w-6 h-6 animate-pulse" />
+              </div>
+              <span className="text-[11px] font-black uppercase px-2.5 py-1 rounded-xl bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-500/20">
+                {isVi ? 'Trực tiếp & OPR' : 'Live & Scouting'}
+              </span>
+            </div>
+            <h3 className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-white group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">
+              {t.featureLiveEventsTitle || (isVi ? 'Theo Dõi Giải Đấu & Phân Tích Đối Thủ' : 'Live Tournaments & Scouting Station')}
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">
+              {t.featureLiveEventsDesc || (isVi 
+                ? 'Theo dõi trận đấu trực tiếp từ RobotEvents, giải hệ phương trình OPR hợp tác, phân tích tỉ lệ điểm Skills và nhận cảnh báo âm thanh trước khi đội ra sân thi đấu.' 
+                : 'Real-time RobotEvents tournament tracking, regularized cooperative OPR calculations, Driver vs Programming skills split bars, audio queue alerts, and team compare matrix.')}
+            </p>
+            <div className="mt-4 flex items-center gap-1.5 text-xs font-bold text-rose-600 dark:text-rose-400">
+              <span>{isVi ? 'Mở trung tâm giải đấu' : 'Launch Live Events'}</span>
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
             </div>
           </div>

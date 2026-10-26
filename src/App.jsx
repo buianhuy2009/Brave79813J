@@ -9,7 +9,8 @@ import {
   Moon, 
   Globe,
   Home as HomeIcon,
-  Compass
+  Compass,
+  Radio
 } from 'lucide-react';
 import Home from './components/Home';
 import ScoreCalculator from './components/ScoreCalculator';
@@ -17,6 +18,7 @@ import MatchTimer from './components/MatchTimer';
 import MatchHistory from './components/MatchHistory';
 import GameManual from './components/GameManual';
 import StrategyBoard from './components/StrategyBoard';
+import LiveEvents from './components/events/LiveEvents';
 import RulesModal from './components/RulesModal';
 import { GAME_INFO } from './constants/rules';
 import { translations } from './constants/translations';
@@ -160,6 +162,21 @@ export default function App() {
               <span>{t.timer}</span>
             </button>
 
+            {/* Live Events Tab (Placed directly after Timer, before History) */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('live-events')}
+              aria-label={t.navLiveEvents || (lang === 'vi' ? 'Giải Đấu Trực Tiếp' : 'Live Events')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0 ${
+                activeTab === 'live-events'
+                  ? 'bg-white dark:bg-cyan-500 text-slate-900 dark:text-slate-950 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <Radio className="w-4 h-4 text-rose-500 dark:text-rose-400 animate-pulse" />
+              <span>{t.navLiveEvents || (lang === 'vi' ? 'Giải Đấu' : 'Live Events')}</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setActiveTab('history')}
@@ -248,6 +265,8 @@ export default function App() {
       <main className={
         activeTab === 'strategy'
           ? "flex-1 w-full max-w-[1800px] mx-auto px-2 sm:px-3 py-1 flex flex-col min-h-0"
+          : activeTab === 'live-events'
+          ? "flex-1 w-full max-w-7xl mx-auto px-3 sm:px-6 py-6"
           : "flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6"
       }>
         {/* Home View */}
@@ -280,6 +299,11 @@ export default function App() {
               lang={lang}
             />
           </div>
+        )}
+
+        {/* Live Events View */}
+        {activeTab === 'live-events' && (
+          <LiveEvents lang={lang} />
         )}
 
         {/* Saved Match History View */}
