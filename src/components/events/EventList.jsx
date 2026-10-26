@@ -219,7 +219,9 @@ export default function EventList({ onSelectEvent, lang = 'en', initialCountry =
   const t = useMemo(() => {
     const parentDict = translations?.[lang] || translations?.en || {};
     const fallbackDict = I18N[lang] || I18N.en;
-    return { ...fallbackDict, ...parentDict };
+    // Local component strings take precedence over app-wide keys with the same name
+    // (e.g. global `filterAll` = "All Rules" for the Game Manual).
+    return { ...parentDict, ...fallbackDict };
   }, [lang]);
 
   // Data states
@@ -262,6 +264,11 @@ export default function EventList({ onSelectEvent, lang = 'en', initialCountry =
         getActiveVietnamEvents(),
         getEvents({ per_page: 100 })
       ]);
+
+      // Surface API failures instead of silently showing "No tournaments found"
+      if (vnRes.status === 'rejected' && worldwideRes.status === 'rejected') {
+        throw worldwideRes.reason || vnRes.reason;
+      }
 
       let vnAll = [];
       let vnActive = [];

@@ -279,7 +279,7 @@ export function ScoreBreakdownModal({ match, event, onClose, lang = 'en' }) {
   if (!match) return null;
 
   const alliance = extractMatchAlliance(match);
-  const t = { ...(I18N[lang] || I18N.en), ...(translations?.[lang] || translations?.en || {}) };
+  const t = { ...(translations?.[lang] || translations?.en || {}), ...(I18N[lang] || I18N.en) };
   const bd = alliance.breakdown;
 
   // Extract Level Up specific breakdown fields if available
@@ -481,7 +481,7 @@ export function ScoreBreakdownModal({ match, event, onClose, lang = 'en' }) {
 export function QuickQueueAlertModal({ match, onClose, onSave, lang = 'en' }) {
   if (!match) return null;
   const alliance = extractMatchAlliance(match);
-  const t = { ...(I18N[lang] || I18N.en), ...(translations?.[lang] || translations?.en || {}) };
+  const t = { ...(translations?.[lang] || translations?.en || {}), ...(I18N[lang] || I18N.en) };
   const [selectedTeam, setSelectedTeam] = useState(alliance.teams[0]?.number || '');
   const [matchesAhead, setMatchesAhead] = useState(2);
   const [isTestingAudio, setIsTestingAudio] = useState(false);
@@ -622,7 +622,7 @@ export function CooperativeMatchCard({
   lang = 'en'
 }) {
   const alliance = extractMatchAlliance(match);
-  const t = { ...(I18N[lang] || I18N.en), ...(translations?.[lang] || translations?.en || {}) };
+  const t = { ...(translations?.[lang] || translations?.en || {}), ...(I18N[lang] || I18N.en) };
 
   const isAlertForThisMatch = activeAlertTeam && alliance.teams.some(tItem => tItem.number === activeAlertTeam);
   const hasBreakdownData = Boolean(alliance.breakdown);
@@ -868,7 +868,7 @@ export default function MatchSchedule({
   onOpenQueueAlert: parentOpenQueueAlert,
   lang = 'en'
 }) {
-  const t = { ...(I18N[lang] || I18N.en), ...(translations?.[lang] || translations?.en || {}) };
+  const t = { ...(translations?.[lang] || translations?.en || {}), ...(I18N[lang] || I18N.en) };
 
   // Filter States
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'scheduled' | 'played' | 'finals'
