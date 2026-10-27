@@ -6,6 +6,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   STORAGE_KEY_FAVORITES,
   STORAGE_KEY_QUEUE_ALERTS,
+  STORAGE_KEY_SCOUTING_NOTES,
+  STORAGE_KEY_MATCH_NOTES,
   DEFAULT_FAVORITES,
   DEFAULT_QUEUE_ALERT_CONFIG,
   getFavorites,
@@ -17,6 +19,15 @@ import {
   getQueueAlertConfig,
   setQueueAlertConfig,
   resetQueueAlertConfig,
+  getTeamNotes,
+  setTeamNotes,
+  getAllTeamNotes,
+  clearAllTeamNotes,
+  getMatchNotes,
+  setMatchNotes,
+  getAllMatchNotes,
+  clearAllMatchNotes,
+  toggleScoutingTag,
   subscribeToStorage
 } from './eventsStorage.js';
 
@@ -76,6 +87,8 @@ describe('eventsStorage.js - LocalStorage & Cache Manager', () => {
 
     clearFavorites();
     resetQueueAlertConfig();
+    clearAllTeamNotes();
+    clearAllMatchNotes();
   });
 
   afterEach(() => {
@@ -227,8 +240,82 @@ describe('eventsStorage.js - LocalStorage & Cache Manager', () => {
     });
   });
 
+  describe('Team Scouting Notes CRUD', () => {
+    it('returns empty string when no notes exist for team', () => {
+      expect(getTeamNotes('79813J')).toBe('');
+      expect(getTeamNotes('')).toBe('');
+      expect(getTeamNotes(null)).toBe('');
+    });
+
+    it('saves and retrieves team notes with uppercase team number normalization', () => {
+      setTeamNotes('79813j', 'Fast intake, reliable Level 3 score');
+      expect(getTeamNotes('79813J')).toBe('Fast intake, reliable Level 3 score');
+      expect(getTeamNotes(' 79813j ')).toBe('Fast intake, reliable Level 3 score');
+
+      const allNotes = getAllTeamNotes();
+      expect(allNotes['79813J']).toBe('Fast intake, reliable Level 3 score');
+    });
+
+    it('removes team entry when notes are updated to empty or whitespace string', () => {
+      setTeamNotes('79813J', 'Initial note');
+      expect(getTeamNotes('79813J')).toBe('Initial note');
+
+      setTeamNotes('79813J', '   ');
+      expect(getTeamNotes('79813J')).toBe('');
+      const allNotes = getAllTeamNotes();
+      expect(allNotes['79813J']).toBeUndefined();
+    });
+
+    it('clears all scouting notes cleanly', () => {
+      setTeamNotes('1111A', 'Team 1 notes');
+      setTeamNotes('2222B', 'Team 2 notes');
+      expect(Object.keys(getAllTeamNotes()).length).toBe(2);
+
+      clearAllTeamNotes();
+      expect(Object.keys(getAllTeamNotes()).length).toBe(0);
+      expect(getTeamNotes('1111A')).toBe('');
+    });
+  });
+
+  describe('Match Scouting Notes CRUD', () => {
+    it('returns empty string when no notes exist for match', () => {
+      expect(getMatchNotes('101')).toBe('');
+      expect(getMatchNotes('')).toBe('');
+      expect(getMatchNotes(null)).toBe('');
+    });
+
+    it('saves and retrieves match notes by string or numeric matchId', () => {
+      setMatchNotes(101, 'Level 3 autonomous success, fast double park');
+      expect(getMatchNotes('101')).toBe('Level 3 autonomous success, fast double park');
+      expect(getMatchNotes(101)).toBe('Level 3 autonomous success, fast double park');
+
+      const allNotes = getAllMatchNotes();
+      expect(allNotes['101']).toBe('Level 3 autonomous success, fast double park');
+    });
+
+    it('removes match entry when notes are updated to empty or whitespace string', () => {
+      setMatchNotes('202', 'Initial match strategy');
+      expect(getMatchNotes('202')).toBe('Initial match strategy');
+
+      setMatchNotes('202', '   ');
+      expect(getMatchNotes('202')).toBe('');
+      const allNotes = getAllMatchNotes();
+      expect(allNotes['202']).toBeUndefined();
+    });
+
+    it('clears all match notes cleanly', () => {
+      setMatchNotes('M1', 'Match 1 tactical note');
+      setMatchNotes('M2', 'Match 2 tactical note');
+      expect(Object.keys(getAllMatchNotes()).length).toBe(2);
+
+      clearAllMatchNotes();
+      expect(Object.keys(getAllMatchNotes()).length).toBe(0);
+      expect(getMatchNotes('M1')).toBe('');
+    });
+  });
+
   describe('Reactive Subscriptions', () => {
-    it('triggers listener when toggleFavorite or setQueueAlertConfig fires', () => {
+    it('triggers listener when toggleFavorite, setQueueAlertConfig, setTeamNotes, or setMatchNotes fires', () => {
       const listener = vi.fn();
       const unsubscribe = subscribeToStorage(listener);
 
@@ -244,9 +331,65 @@ describe('eventsStorage.js - LocalStorage & Cache Manager', () => {
         action: 'update'
       }));
 
+      setTeamNotes('79813J', 'Great alliance partner');
+      expect(listener).toHaveBeenCalledWith(expect.objectContaining({
+        key: STORAGE_KEY_SCOUTING_NOTES,
+        action: 'update'
+      }));
+
+      setMatchNotes('101', 'Solid Level 4 scoring');
+      expect(listener).toHaveBeenCalledWith(expect.objectContaining({
+        key: STORAGE_KEY_MATCH_NOTES,
+        action: 'update'
+      }));
+
       unsubscribe();
       toggleFavorite('teams', '12345A');
-      expect(listener).toHaveBeenCalledTimes(2); // No new call after unsubscribe
+      expect(listener).toHaveBeenCalledTimes(4); // No new call after unsubscribe
+    });
+  });
+
+  describe('toggleScoutingTag Utility', () => {
+    it('appends tag to empty or null notes', () => {
+      expect(toggleScoutingTag('', '⚡ Rapid Intake')).toBe('⚡ Rapid Intake');
+      expect(toggleScoutingTag(null, '⚡ Rapid Intake')).toBe('⚡ Rapid Intake');
+    });
+
+    it('appends tag with bullet delimiter to existing single-line notes', () => {
+      const result = toggleScoutingTag('Fast autonomous', '⚡ Rapid Intake');
+      expect(result).toBe('Fast autonomous • ⚡ Rapid Intake');
+    });
+
+    it('toggles off active tag at the end cleanly', () => {
+      const initial = 'Fast autonomous • ⚡ Rapid Intake';
+      const toggled = toggleScoutingTag(initial, '⚡ Rapid Intake');
+      expect(toggled).toBe('Fast autonomous');
+    });
+
+    it('toggles off active tag at the beginning cleanly', () => {
+      const initial = '⚡ Rapid Intake • Fast autonomous';
+      const toggled = toggleScoutingTag(initial, '⚡ Rapid Intake');
+      expect(toggled).toBe('Fast autonomous');
+    });
+
+    it('toggles off middle tag without leaving double bullets', () => {
+      const initial = 'TagA • TagB • TagC';
+      const toggled = toggleScoutingTag(initial, 'TagB');
+      expect(toggled).toBe('TagA • TagC');
+    });
+
+    it('strictly preserves multi-line notes without destroying newlines', () => {
+      const initial = 'Auto Path: Level 3 yellow goal\nDriver: 45 pts\n⚡ Rapid Intake • 🅿️ Clean Double Park';
+      const toggled = toggleScoutingTag(initial, '⚡ Rapid Intake');
+      expect(toggled).toBe('Auto Path: Level 3 yellow goal\nDriver: 45 pts\n🅿️ Clean Double Park');
+    });
+
+    it('coerces non-string notes in setTeamNotes and setMatchNotes properly', () => {
+      setTeamNotes('99999X', 12345);
+      expect(getTeamNotes('99999X')).toBe('12345');
+
+      setMatchNotes('M99', 67890);
+      expect(getMatchNotes('M99')).toBe('67890');
     });
   });
 });

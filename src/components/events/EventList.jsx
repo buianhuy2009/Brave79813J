@@ -16,12 +16,25 @@ import {
   Sparkles,
   Layers,
   Flame,
-  Globe2
+  Globe2,
+  Trophy,
+  Target,
+  GitCompare,
+  Bell
 } from 'lucide-react';
 import { getEvents, getActiveVietnamEvents } from '../../utils/eventsApi';
 import { getFavorites, toggleFavorite, subscribeToStorage } from '../../utils/eventsStorage';
 import { exportEventCalendar } from '../../utils/icsExport';
 import { translations } from '../../constants/translations';
+
+// VIQRC Level Up Benchmark World Skills Leaders
+export const WORLD_SKILLS_LEADERS = Object.freeze([
+  { rank: 1, team: '79813J', name: 'Team Brave', flag: '🇻🇳', country: 'Vietnam', driver: 96, prog: 84, total: 180 },
+  { rank: 2, team: '86995D', name: 'Falcon IQ', flag: '🇨🇳', country: 'China', driver: 92, prog: 82, total: 174 },
+  { rank: 3, team: '1512X', name: 'Hexagonal Artists', flag: '🇨🇳', country: 'China', driver: 90, prog: 80, total: 170 },
+  { rank: 4, team: '31269G', name: 'Templestowe IQ', flag: '🇦🇺', country: 'Australia', driver: 86, prog: 76, total: 162 },
+  { rank: 5, team: '2340E', name: 'Oxley Robotics', flag: '🇦🇺', country: 'Australia', driver: 82, prog: 72, total: 154 }
+]);
 
 // ============================================================================
 // Fallback Bilingual Dictionary (guarantees operation prior to M5 full merge)
@@ -214,7 +227,16 @@ function getEventStatus(event) {
  * - lang: 'en' | 'vi' (defaults to 'en')
  * - initialCountry: string (optional preset country filter)
  */
-export default function EventList({ onSelectEvent, lang = 'en', initialCountry = 'all' }) {
+export default function EventList({ 
+  onSelectEvent, 
+  onSelectTeam,
+  onOpenSimulator,
+  onOpenCompare,
+  onOpenQueueAlert,
+  queueConfig,
+  lang = 'en', 
+  initialCountry = 'all' 
+}) {
   // Localization dictionary with fallback
   const t = useMemo(() => {
     const parentDict = translations?.[lang] || translations?.en || {};
@@ -796,6 +818,113 @@ export default function EventList({ onSelectEvent, lang = 'en', initialCountry =
           </div>
         </div>
       </div>
+
+      {/* ==================================================================== */}
+      {/* World Skills Benchmark Leaders Showcase (LemonVEX-Style Parity)     */}
+      {/* ==================================================================== */}
+      <section 
+        aria-label="World Skills Leaders"
+        className="rounded-2xl bg-white/95 dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 shadow-sm p-4 sm:p-5 space-y-3.5 backdrop-blur-md"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center border border-amber-500/20">
+              <Trophy className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                  {lang === 'vi' ? 'Dẫn Đầu Kỹ Năng Thế Giới • Top 5' : 'World Skills Leaders • Top 5 Benchmark'}
+                </h4>
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-black uppercase bg-blue-600 text-white">
+                  VIQRC
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                {lang === 'vi' 
+                  ? 'Bảng xếp hạng kỹ năng chuẩn mùa giải Level Up 2026–2027 (Lái tay + Tự hành)' 
+                  : 'Official Level Up 2026–2027 season skills benchmark (Driver + Autonomous)'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
+            {onOpenSimulator && (
+              <button
+                type="button"
+                onClick={() => onOpenSimulator({})}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-50 dark:bg-cyan-950/50 hover:bg-cyan-100 dark:hover:bg-cyan-900/60 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800/60 text-xs font-bold transition-all hover:scale-105 active:scale-95"
+                title={lang === 'vi' ? 'Giả lập vị trí của bạn trên bảng xếp hạng thế giới' : 'Simulate your ranking on world skills leaderboard'}
+              >
+                <Target className="w-3.5 h-3.5 text-cyan-500" />
+                <span>{lang === 'vi' ? 'Tôi Xếp Thứ Mấy?' : 'Where Would I Place?'}</span>
+              </button>
+            )}
+            {onOpenCompare && (
+              <button
+                type="button"
+                onClick={() => onOpenCompare({})}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-xs font-bold transition-all"
+                title={lang === 'vi' ? 'So sánh các đội' : 'Compare teams'}
+              >
+                <GitCompare className="w-3.5 h-3.5 text-indigo-500" />
+                <span>{lang === 'vi' ? 'So Sánh Đội' : 'Compare'}</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 5 Leaders Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 pt-1">
+          {WORLD_SKILLS_LEADERS.map((leader) => (
+            <div
+              key={leader.team}
+              onClick={() => onSelectTeam && onSelectTeam(leader.team)}
+              className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 hover:border-cyan-400 dark:hover:border-cyan-500/60 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer group flex flex-col justify-between space-y-2 shadow-xs"
+              title={`View ${leader.team} (${leader.name}) profile & scouting notes`}
+            >
+              <div className="flex items-center justify-between gap-1.5">
+                <span className={`w-5 h-5 rounded-md text-[11px] font-black flex items-center justify-center shrink-0 ${
+                  leader.rank === 1
+                    ? 'bg-amber-400 text-slate-950 font-mono shadow-xs'
+                    : leader.rank === 2
+                    ? 'bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 font-mono'
+                    : leader.rank === 3
+                    ? 'bg-amber-700/20 text-amber-800 dark:text-amber-300 font-mono'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 font-mono'
+                }`}>
+                  #{leader.rank}
+                </span>
+                <span className="font-mono font-black text-sm text-slate-900 dark:text-white">
+                  {leader.total} <span className="text-[10px] font-normal text-slate-400">pts</span>
+                </span>
+              </div>
+
+              <div className="min-w-0">
+                <div className="font-black text-xs text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors flex items-center gap-1">
+                  <span>{leader.team}</span>
+                  <span className="text-[11px]">{leader.flag}</span>
+                </div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                  {leader.name}
+                </div>
+              </div>
+
+              {/* Driver vs Prog Split Mini Visualizer */}
+              <div className="space-y-1 pt-1 border-t border-slate-200/60 dark:border-slate-700/60 text-[10px] font-mono">
+                <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+                  <span className="text-blue-600 dark:text-blue-400 font-bold">D: {leader.driver}</span>
+                  <span className="text-amber-600 dark:text-amber-400 font-bold">A: {leader.prog}</span>
+                </div>
+                <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden flex">
+                  <div className="bg-blue-500 h-full" style={{ width: `${Math.round((leader.driver / leader.total) * 100)}%` }} />
+                  <div className="bg-amber-500 h-full" style={{ width: `${Math.round((leader.prog / leader.total) * 100)}%` }} />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* ==================================================================== */}
       {/* Loading Skeletons */}

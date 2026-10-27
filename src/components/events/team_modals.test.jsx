@@ -3,6 +3,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import TeamProfileModal from './TeamProfileModal';
 import TeamCompareModal from './TeamCompareModal';
+import { setTeamNotes } from '../../utils/eventsStorage';
 
 describe('Milestone M5 Team Profile & Team Compare Components', () => {
 
@@ -324,12 +325,73 @@ describe('Milestone M5 Team Profile & Team Compare Components', () => {
       expect(html).toContain('No matches recorded for this team yet');
       expect(html).toContain('No official awards published');
     });
+
+    it('renders pit scouting notes textarea and quick tags', () => {
+      const html = renderToStaticMarkup(
+        React.createElement(TeamProfileModal, {
+          isOpen: true,
+          teamIdentifier: '79813J',
+          teams: mockTeams,
+          rankings: mockRankings,
+          skills: mockSkills,
+          matches: mockMatches,
+          awards: mockAwards,
+          oprMap: mockOprMap,
+          lang: 'en'
+        })
+      );
+
+      expect(html).toContain('Pit Scouting Notes');
+      expect(html).toContain('Quick Pit Tags');
+      expect(html).toContain('textarea');
+      expect(html).toContain('Rapid Intake');
+    });
+
+    it('renders clear notes button when scouting notes are present for the team', () => {
+      // Set notes for the team
+      setTeamNotes('79813J', 'Intake roller needs new rubber bands');
+
+      const html = renderToStaticMarkup(
+        React.createElement(TeamProfileModal, {
+          isOpen: true,
+          teamIdentifier: '79813J',
+          teams: mockTeams,
+          rankings: mockRankings,
+          skills: mockSkills,
+          matches: mockMatches,
+          awards: mockAwards,
+          oprMap: mockOprMap,
+          lang: 'en'
+        })
+      );
+
+      expect(html).toContain('Clear Notes');
+    });
   });
 
   // ==========================================================================
   // 2. TeamCompareModal Tests
   // ==========================================================================
   describe('TeamCompareModal Component', () => {
+    it('handles string initialTeams cleanly and displays team in comparison', () => {
+      const html = renderToStaticMarkup(
+        React.createElement(TeamCompareModal, {
+          isOpen: true,
+          initialTeams: '79813J',
+          teams: mockTeams,
+          rankings: mockRankings,
+          skills: mockSkills,
+          matches: mockMatches,
+          awards: mockAwards,
+          oprMap: mockOprMap,
+          lang: 'en'
+        })
+      );
+
+      expect(html).toContain('79813J');
+      expect(html).toContain('Team Head-to-Head Comparison');
+    });
+
     it('renders side-by-side comparison for 2 selected teams', () => {
       const html = renderToStaticMarkup(
         React.createElement(TeamCompareModal, {

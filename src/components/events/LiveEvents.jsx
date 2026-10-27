@@ -210,7 +210,7 @@ export default function LiveEvents({ lang = 'en' }) {
   };
 
   // Modal Openers
-  const handleOpenTeamProfile = (teamOrPayload) => {
+  const handleOpenTeamProfile = useCallback((teamOrPayload) => {
     const teamNumber = typeof teamOrPayload === 'string'
       ? teamOrPayload
       : (teamOrPayload?.number || teamOrPayload?.team || teamOrPayload?.teamNumber || '');
@@ -219,27 +219,40 @@ export default function LiveEvents({ lang = 'en' }) {
       : { teamNumber, team: { number: teamNumber } };
     setActiveModalPayload(modalPayload);
     setActiveModal('profile');
-  };
+  }, []);
 
-  const handleOpenTeamCompare = (payload) => {
-    setActiveModalPayload(payload || {});
+  const handleOpenTeamCompare = useCallback((payload) => {
+    let resolved = {};
+    if (typeof payload === 'string' && payload.trim()) {
+      resolved = { initialTeams: [payload.trim()], teamNumber: payload.trim() };
+    } else if (Array.isArray(payload)) {
+      resolved = { initialTeams: payload };
+    } else if (payload && typeof payload === 'object') {
+      const initialTeams = Array.isArray(payload.initialTeams)
+        ? payload.initialTeams
+        : (Array.isArray(payload.teams)
+            ? payload.teams
+            : (payload.teamNumber ? [payload.teamNumber] : []));
+      resolved = { ...payload, initialTeams };
+    }
+    setActiveModalPayload(resolved);
     setActiveModal('compare');
-  };
+  }, []);
 
-  const handleOpenSimulator = (payload = {}) => {
+  const handleOpenSimulator = useCallback((payload = {}) => {
     setActiveModalPayload(payload || {});
     setActiveModal('simulator');
-  };
+  }, []);
 
-  const handleOpenQueueAlert = (payload) => {
+  const handleOpenQueueAlert = useCallback((payload) => {
     setActiveModalPayload(payload || {});
     setActiveModal('queueAlert');
-  };
+  }, []);
 
-  const handleCloseModal = () => {
+  const handleCloseModal = useCallback(() => {
     setActiveModal(null);
     setActiveModalPayload(null);
-  };
+  }, []);
 
   return (
     <div className="space-y-6 pb-16 animate-fadeIn">
@@ -394,6 +407,11 @@ export default function LiveEvents({ lang = 'en' }) {
       {currentView === 'list' ? (
         <EventList 
           onSelectEvent={handleSelectEvent}
+          onSelectTeam={handleOpenTeamProfile}
+          onOpenSimulator={handleOpenSimulator}
+          onOpenCompare={handleOpenTeamCompare}
+          onOpenQueueAlert={handleOpenQueueAlert}
+          queueConfig={queueConfig}
           lang={lang}
           initialCountry="all"
         />
@@ -431,6 +449,7 @@ export default function LiveEvents({ lang = 'en' }) {
           onSelectTeam={handleOpenTeamProfile}
           onOpenCompare={handleOpenTeamCompare}
           onOpenQueueAlert={handleOpenQueueAlert}
+          onOpenSimulator={handleOpenSimulator}
           lang={lang}
         />
       )}
@@ -461,6 +480,8 @@ export default function LiveEvents({ lang = 'en' }) {
           onClose={handleCloseModal}
           event={activeModalPayload?.event || selectedEvent}
           eventSkills={activeModalPayload?.eventSkills || activeModalPayload?.skills || []}
+          initialDriverScore={activeModalPayload?.driverScore ?? activeModalPayload?.initialDriverScore ?? 40}
+          initialProgScore={activeModalPayload?.progScore ?? activeModalPayload?.initialProgScore ?? 30}
           lang={lang}
         />
       )}

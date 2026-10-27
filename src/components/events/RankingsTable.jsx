@@ -41,7 +41,8 @@ const I18N = {
     podiumGold: '1st Place',
     podiumSilver: '2nd Place',
     podiumBronze: '3rd Place',
-    pts: 'pts'
+    pts: 'pts',
+    compareTeams: 'Compare Teams'
   },
   vi: {
     rankingsTitle: 'Bảng Xếp Hạng Vòng Loại',
@@ -65,7 +66,8 @@ const I18N = {
     podiumGold: 'Hạng Nhất',
     podiumSilver: 'Hạng Nhì',
     podiumBronze: 'Hạng Ba',
-    pts: 'điểm'
+    pts: 'điểm',
+    compareTeams: 'So Sánh Đội'
   }
 };
 
@@ -131,6 +133,8 @@ export default function RankingsTable({
   division = null,
   event = null,
   onSelectTeam = null,
+  onOpenTeamCompare = null,
+  onCompareTeam = null,
   loading = false,
   lang: propLang = null
 }) {
@@ -393,6 +397,18 @@ export default function RankingsTable({
             <Download className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
             <span>{t.exportCsv}</span>
           </button>
+
+          {(onOpenTeamCompare || onCompareTeam) && (
+            <button
+              type="button"
+              onClick={() => (onOpenTeamCompare || onCompareTeam)({})}
+              title={lang === 'vi' ? 'So sánh các đội' : 'Compare teams head-to-head'}
+              className="min-h-[44px] px-3.5 sm:px-4 rounded-2xl border border-slate-200 dark:border-slate-700 hover:border-indigo-500/50 bg-slate-50 dark:bg-slate-800/80 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all hover:scale-102 active:scale-98 flex items-center gap-1.5 shrink-0 shadow-sm"
+            >
+              <Users className="w-4 h-4 text-indigo-500" />
+              <span>{t.compareTeams}</span>
+            </button>
+          )}
         </div>
       </div>
 

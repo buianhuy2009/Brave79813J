@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
   X, 
   Star, 
@@ -20,9 +20,13 @@ import {
   Percent, 
   Flame,
   CheckCircle2,
-  Calendar
+  Calendar,
+  FileText,
+  Check,
+  Tag,
+  Trash2
 } from 'lucide-react';
-import { isFavorite, toggleFavorite, subscribeToStorage } from '../../utils/eventsStorage';
+import { isFavorite, toggleFavorite, subscribeToStorage, getTeamNotes, setTeamNotes, toggleScoutingTag } from '../../utils/eventsStorage';
 import { calculateOPR, parseMatch, normalizeTeamKey } from '../../utils/opr';
 import { getTeam, getTeamSkills } from '../../utils/eventsApi';
 import RadarChart from './charts/RadarChart';
@@ -75,7 +79,13 @@ const I18N = {
     divisionMedian: 'Division Median',
     soloAlliance: 'Solo Alliance',
     loadingSeason: 'Fetching world standing...',
-    unranked: 'Unranked'
+    unranked: 'Unranked',
+    scoutingNotesTitle: 'Pit Scouting Notes',
+    scoutingNotesDesc: 'Tactical observations, robot mechanisms, and alliance strategy',
+    scoutingNotesPlaceholder: 'Record scouting observations for Team {team} (intake speed, autonomous reliability, Level 3-4 scoring, parking strategy)...',
+    notesSaved: 'Saved to device',
+    quickTags: 'Quick Pit Tags',
+    clearNotes: 'Clear Notes'
   },
   vi: {
     teamProfile: 'Hồ Sơ Do Thám Đội Tuyển',
@@ -119,7 +129,13 @@ const I18N = {
     divisionMedian: 'Trung vị bảng',
     soloAlliance: 'Đấu đơn',
     loadingSeason: 'Đang tải hạng thế giới...',
-    unranked: 'Chưa xếp hạng'
+    unranked: 'Chưa xếp hạng',
+    scoutingNotesTitle: 'Ghi Chú Do Thám Khu Thi Đấu',
+    scoutingNotesDesc: 'Đánh giá chiến thuật, cơ cấu robot và độ ăn ý khi chọn liên minh',
+    scoutingNotesPlaceholder: 'Ghi chú do thám cho đội {team} (tốc độ nạp, độ ổn định auto, ghi điểm Level 3-4, kỹ năng đỗ xe)...',
+    notesSaved: 'Đã lưu trên thiết bị',
+    quickTags: 'Thẻ đánh giá nhanh',
+    clearNotes: 'Xóa ghi chú'
   }
 };
 
@@ -154,6 +170,7 @@ export default function TeamProfileModal({
   onSelectTeam = null,
   onOpenCompare = null,
   onOpenQueueAlert = null,
+  onOpenSimulator = null,
   lang = 'en'
 }) {
   const t = I18N[lang] || I18N.en;
@@ -175,12 +192,16 @@ export default function TeamProfileModal({
     seasonSkills: null
   });
 
-  // Keep favorite in sync with storage updates
+  // Keep favorite and scouting notes in sync with storage updates
   useEffect(() => {
     setIsFav(isFavorite('teams', teamNumber));
+    setScoutingNotes(getTeamNotes(teamNumber));
     const unsub = subscribeToStorage(detail => {
-      if (detail.key === 'vexiq_live_favorites') {
+      if (detail.key === 'vexiq_live_favorites' || !detail.key) {
         setIsFav(isFavorite('teams', teamNumber));
+      }
+      if (detail.key === 'vexiq_live_scouting_notes' || !detail.key) {
+        setScoutingNotes(getTeamNotes(teamNumber));
       }
     });
     return unsub;
@@ -449,6 +470,49 @@ export default function TeamProfileModal({
     const newState = toggleFavorite('teams', teamNumber);
     setIsFav(newState);
   }, [teamNumber]);
+
+  // Scouting notes state & auto-persistence
+  const [scoutingNotes, setScoutingNotes] = useState(() => getTeamNotes(teamNumber));
+  const [notesSavedIndicator, setNotesSavedIndicator] = useState(false);
+  const notesTimerRef = useRef(null);
+
+  useEffect(() => {
+    setScoutingNotes(getTeamNotes(teamNumber));
+  }, [teamNumber]);
+
+  useEffect(() => {
+    return () => {
+      if (notesTimerRef.current) clearTimeout(notesTimerRef.current);
+    };
+  }, []);
+
+  const triggerSavedToast = () => {
+    if (notesTimerRef.current) clearTimeout(notesTimerRef.current);
+    setNotesSavedIndicator(true);
+    notesTimerRef.current = setTimeout(() => {
+      setNotesSavedIndicator(false);
+    }, 2000);
+  };
+
+  const handleNotesChange = (e) => {
+    const val = e.target.value;
+    setScoutingNotes(val);
+    setTeamNotes(teamNumber, val);
+    triggerSavedToast();
+  };
+
+  const handleToggleTag = (tag) => {
+    const updated = toggleScoutingTag(scoutingNotes, tag);
+    setScoutingNotes(updated);
+    setTeamNotes(teamNumber, updated);
+    triggerSavedToast();
+  };
+
+  const handleClearNotes = () => {
+    setScoutingNotes('');
+    setTeamNotes(teamNumber, '');
+    triggerSavedToast();
+  };
 
   if (!isOpen || !teamNumber) return null;
 
@@ -774,23 +838,46 @@ export default function TeamProfileModal({
                 </div>
               </div>
 
-              {/* Global Season Skills Badge (if loaded) */}
-              <div className="p-3 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 flex items-center justify-between text-xs">
+              {/* Global Season Skills Badge & Simulator Launcher */}
+              <div className="p-3 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-indigo-500 shrink-0" />
                   <span className="font-semibold text-slate-700 dark:text-slate-300">
                     {t.worldSkillsRank}:
                   </span>
+                  <span className="font-mono font-black text-indigo-600 dark:text-indigo-400">
+                    {seasonDetails.loading ? (
+                      <span className="text-slate-400 text-[11px] animate-pulse">{t.loadingSeason}</span>
+                    ) : seasonDetails.worldRank ? (
+                      `#${seasonDetails.worldRank}`
+                    ) : (
+                      `#${skillsRank} (${isVi ? 'Tại giải' : 'Event'})`
+                    )}
+                  </span>
                 </div>
-                <div className="font-mono font-black text-indigo-600 dark:text-indigo-400">
-                  {seasonDetails.loading ? (
-                    <span className="text-slate-400 text-[11px] animate-pulse">{t.loadingSeason}</span>
-                  ) : seasonDetails.worldRank ? (
-                    `#${seasonDetails.worldRank}`
-                  ) : (
-                    `#${skillsRank} (${isVi ? 'Tại giải' : 'Event'})`
-                  )}
-                </div>
+
+                {onOpenSimulator && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onClose) onClose();
+                      onOpenSimulator({
+                        initialDriverScore: driverScore,
+                        initialProgScore: progScore,
+                        driverScore,
+                        progScore,
+                        teamNumber,
+                        event,
+                        eventSkills: skills
+                      });
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-50 dark:bg-cyan-950/50 hover:bg-cyan-100 dark:hover:bg-cyan-900/60 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 text-[11px] font-bold transition-all hover:scale-105 active:scale-95 self-start sm:self-auto"
+                    title={isVi ? 'Mô phỏng vị trí của đội này trên bảng xếp hạng thế giới' : 'Simulate this team on world skills leaderboard'}
+                  >
+                    <Target className="w-3.5 h-3.5 text-cyan-500" />
+                    <span>{isVi ? 'Giả lập Skills' : 'Simulate Skills'}</span>
+                  </button>
+                )}
               </div>
 
             </div>
@@ -819,6 +906,94 @@ export default function TeamProfileModal({
               showMinMax={true}
               showArea={true}
               lang={lang}
+            />
+          </div>
+
+          {/* SECTION: Pit Scouting Notes (LemonVEX Parity) */}
+          <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-cyan-500" />
+                <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                  {t.scoutingNotesTitle}
+                </h3>
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300">
+                  {teamNumber}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {notesSavedIndicator && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800/40 animate-fade-in">
+                    <Check className="w-3 h-3" />
+                    <span>{t.notesSaved}</span>
+                  </span>
+                )}
+                {scoutingNotes && (
+                  <button
+                    type="button"
+                    onClick={handleClearNotes}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors min-h-[36px]"
+                    title={t.clearNotes || (isVi ? 'Xóa ghi chú' : 'Clear notes')}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>{t.clearNotes || (isVi ? 'Xóa' : 'Clear')}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {t.scoutingNotesDesc}
+            </p>
+
+            {/* Quick Tag Buttons */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1 mr-1">
+                <Tag className="w-3 h-3" />
+                <span>{t.quickTags}:</span>
+              </span>
+              {(isVi ? [
+                '⚡ Nạp bóng nhanh',
+                '🎯 Auto chuẩn (35+)',
+                '🏗️ Chuyên Level 3-4',
+                '🤝 Giao tiếp tốt',
+                '🛡️ Quét sàn nhanh',
+                '🅿️ Đỗ xe đôi chuẩn'
+              ] : [
+                '⚡ Rapid Intake',
+                '🎯 Reliable Auto (35+)',
+                '🏗️ Level 3-4 Specialist',
+                '🤝 Great Comms',
+                '🛡️ Floor Sweeper',
+                '🅿️ Consistent Double Park'
+              ]).map((tag) => {
+                const isActive = Boolean(scoutingNotes && scoutingNotes.includes(tag));
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => handleToggleTag(tag)}
+                    aria-pressed={isActive}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all hover:scale-105 active:scale-95 flex items-center gap-1 border ${
+                      isActive
+                        ? 'bg-cyan-50 dark:bg-cyan-950/70 border-cyan-400 dark:border-cyan-500 text-cyan-800 dark:text-cyan-200 shadow-xs'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-cyan-400 dark:hover:border-cyan-500 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <span>{tag}</span>
+                    {isActive && <Check className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Interactive Autosaving Textarea */}
+            <textarea
+              value={scoutingNotes}
+              onChange={handleNotesChange}
+              rows={3}
+              placeholder={t.scoutingNotesPlaceholder.replace('{team}', teamNumber)}
+              className="w-full p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-all resize-y"
             />
           </div>
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
   Users, 
   Calendar, 
@@ -19,7 +19,11 @@ import {
   MapPin, 
   ExternalLink,
   SlidersHorizontal,
-  Info
+  Info,
+  FileText,
+  Tag,
+  Check,
+  Trash2
 } from 'lucide-react';
 import { exportEventCalendar, generateEventIcs, downloadIcsFile } from '../../utils/icsExport';
 import { 
@@ -27,7 +31,12 @@ import {
   toggleFavorite, 
   getQueueAlertConfig, 
   setQueueAlertConfig, 
-  subscribeToStorage 
+  getMatchNotes,
+  setMatchNotes,
+  getAllMatchNotes,
+  STORAGE_KEY_MATCH_NOTES,
+  subscribeToStorage,
+  toggleScoutingTag 
 } from '../../utils/eventsStorage';
 import { playQueueAlertChime } from '../../utils/audioAlert';
 import { translations } from '../../constants/translations';
@@ -92,7 +101,16 @@ const I18N = {
     soloAlliance: 'Solo',
     exportedTeamSchedule: 'Exported Team {team} schedule (.ics)',
     exportedDivisionSchedule: 'Exported division schedule (.ics)',
-    alertSetToast: 'Queue alert set for Team {team} ({ahead} matches ahead)'
+    alertSetToast: 'Queue alert set for Team {team} ({ahead} matches ahead)',
+    matchNotesTitle: 'Match Scouting Notes',
+    matchNotesDesc: 'Alliance strategy, autonomous coordination, and match observations',
+    matchNotesPlaceholder: 'Record tactical observations for {match} ({teams}): auto pathing, intake cycle speed, double park execution, desyncs...',
+    notesBadge: 'Notes',
+    scoutBadge: 'Scout',
+    notesSaved: 'Saved to device',
+    quickMatchTags: 'Match Tactical Tags',
+    clearMatchNotes: 'Clear Notes',
+    matchNotesRecorded: 'Match Scouting Notes Recorded'
   },
   vi: {
     scheduleTitle: 'Lịch Thi Đấu & Kết Quả',
@@ -150,7 +168,16 @@ const I18N = {
     soloAlliance: 'Đấu đơn',
     exportedTeamSchedule: 'Đã tải lịch thi đấu đội {team} (.ics)',
     exportedDivisionSchedule: 'Đã tải toàn bộ lịch thi đấu (.ics)',
-    alertSetToast: 'Đã đặt báo giờ cho đội {team} ({ahead} trận trước)'
+    alertSetToast: 'Đã đặt báo giờ cho đội {team} ({ahead} trận trước)',
+    matchNotesTitle: 'Ghi Chú Do Thám Trận Đấu',
+    matchNotesDesc: 'Chiến thuật liên minh, phối hợp tự hành và quan sát trận đấu',
+    matchNotesPlaceholder: 'Ghi chú cho trận {match} ({teams}): đường chạy auto, tốc độ cycle nạp, phối hợp đỗ xe đôi, sự cố lệch auto...',
+    notesBadge: 'Ghi chú',
+    scoutBadge: 'Do thám',
+    notesSaved: 'Đã lưu trên thiết bị',
+    quickMatchTags: 'Thẻ chiến thuật trận đấu',
+    clearMatchNotes: 'Xóa ghi chú',
+    matchNotesRecorded: 'Ghi Chú Do Thám Của Trận Đấu'
   }
 };
 
@@ -293,13 +320,33 @@ export function ScoreBreakdownModal({ match, event, onClose, lang = 'en' }) {
 
   const hasDetailedBreakdown = [floorPts, l1Pts, l2Pts, l3Pts, l4Pts, clearPts, parkPts].some(v => v !== null && v !== undefined);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && onClose) onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  useEffect(() => {
+    const orig = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = orig;
+    };
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn"
+      onClick={onClose}
+    >
       <div 
         className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[90vh]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="breakdown-title"
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
@@ -459,11 +506,257 @@ export function ScoreBreakdownModal({ match, event, onClose, lang = 'en' }) {
             </div>
           )}
 
+          {/* Match Scouting Notes recorded for this match (if any) */}
+          {(() => {
+            const matchId = match?.id || match?.name;
+            const notes = matchId ? getMatchNotes(matchId) : '';
+            if (!notes) return null;
+            return (
+              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 space-y-2">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                  <FileText className="w-4 h-4 text-amber-500" />
+                  <span>{t.matchNotesRecorded || 'Match Scouting Notes Recorded'}</span>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap font-medium">
+                  {notes}
+                </p>
+              </div>
+            );
+          })()}
+
         </div>
 
         {/* Footer */}
         <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex justify-end">
           <button
+            onClick={onClose}
+            className="px-5 py-2.5 rounded-xl font-bold text-sm bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 transition-opacity min-h-[44px]"
+          >
+            {t.close || 'Close'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Component: Match Scouting Notes Modal (LemonVEX Parity)
+// ============================================================================
+export function MatchScoutingNotesModal({ match, event, onClose, lang = 'en' }) {
+  if (!match) return null;
+
+  const alliance = extractMatchAlliance(match);
+  const t = { ...(translations?.[lang] || translations?.en || {}), ...(I18N[lang] || I18N.en) };
+  const matchId = match?.id != null ? match.id : match?.name;
+  const isVi = lang === 'vi';
+
+  const [notes, setNotes] = useState(() => getMatchNotes(matchId));
+  const [isSaved, setIsSaved] = useState(false);
+  const saveTimerRef = useRef(null);
+
+  // Sync with storage changes
+  useEffect(() => {
+    setNotes(getMatchNotes(matchId));
+  }, [matchId]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToStorage((detail) => {
+      if (!detail?.key || detail.key === STORAGE_KEY_MATCH_NOTES) {
+        setNotes(getMatchNotes(matchId));
+      }
+    });
+    return unsubscribe;
+  }, [matchId]);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && onClose) onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  useEffect(() => {
+    const orig = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = orig;
+    };
+  }, []);
+
+  const triggerSavedToast = () => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    setIsSaved(true);
+    saveTimerRef.current = setTimeout(() => {
+      setIsSaved(false);
+    }, 2000);
+  };
+
+  const handleNotesChange = (e) => {
+    const val = e.target.value;
+    setNotes(val);
+    setMatchNotes(matchId, val);
+    triggerSavedToast();
+  };
+
+  const handleToggleTag = (tag) => {
+    const nextNotes = toggleScoutingTag(notes, tag);
+    setNotes(nextNotes);
+    setMatchNotes(matchId, nextNotes);
+    triggerSavedToast();
+  };
+
+  const handleClear = () => {
+    setNotes('');
+    setMatchNotes(matchId, '');
+    triggerSavedToast();
+  };
+
+  const quickTags = isVi ? [
+    '🤝 Phối hợp ăn ý',
+    '⚡ Tốc độ nạp nhanh',
+    '⚠️ Lệch autonomous',
+    '🏗️ Ghi điểm L3-L4 tốt',
+    '🛡️ Quét sạch sàn',
+    '🅿️ Đỗ xe đôi chuẩn',
+    '⏱️ Dừng sớm cộng điểm',
+    '🔋 Pin yếu / Tốc độ chậm'
+  ] : [
+    '🤝 Great Synergy',
+    '⚡ Rapid Cycling',
+    '⚠️ Auto Desync',
+    '🏗️ High L3-L4 Scoring',
+    '🛡️ Floor Cleanout',
+    '🅿️ Clean Double Park',
+    '⏱️ Stop Time Advantage',
+    '🔋 Low Battery / Slow Drive'
+  ];
+
+  const teamListString = alliance.teams.map(item => item.number).join(' & ');
+
+  return (
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[90vh]"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="match-scout-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400 border border-amber-300 dark:border-amber-800">
+                {alliance.roundName}
+              </span>
+              <h3 id="match-scout-title" className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                <FileText className="w-5 h-5 text-amber-500" />
+                {alliance.matchName}
+              </h3>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5 flex-wrap">
+              <Users className="w-3.5 h-3.5 text-sky-500" />
+              <span className="font-semibold text-slate-700 dark:text-slate-300">
+                {teamListString || 'Alliance'}
+              </span>
+              {alliance.field && (
+                <>
+                  <span className="text-slate-300 dark:text-slate-600">•</span>
+                  <MapPin className="w-3 h-3 text-slate-400" />
+                  <span>{alliance.field}</span>
+                </>
+              )}
+            </p>
+          </div>
+          <button 
+            onClick={onClose}
+            aria-label="Close match scouting modal"
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Content Body */}
+        <div className="p-6 overflow-y-auto space-y-5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              {t.matchNotesDesc || 'Alliance strategy, autonomous coordination, and match observations'}
+            </span>
+            {isSaved && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                <Check className="w-3 h-3" />
+                <span>{t.notesSaved || 'Saved to device'}</span>
+              </span>
+            )}
+          </div>
+
+          {/* Quick Match Tactical Tags */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-400">
+              <Tag className="w-3.5 h-3.5 text-amber-500" />
+              <span>{t.quickMatchTags || 'Match Tactical Tags'}:</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {quickTags.map((tag) => {
+                const isActive = notes.includes(tag);
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => handleToggleTag(tag)}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      isActive
+                        ? 'bg-amber-100 dark:bg-amber-950/80 border-2 border-amber-500 text-amber-900 dark:text-amber-200 shadow-sm'
+                        : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-amber-400 dark:hover:border-amber-500 text-slate-700 dark:text-slate-300 hover:scale-[1.02] active:scale-95'
+                    }`}
+                  >
+                    {isActive && <Check className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />}
+                    <span>{tag}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Notes Textarea */}
+          <div className="space-y-2">
+            <textarea
+              value={notes}
+              onChange={handleNotesChange}
+              rows={5}
+              placeholder={(t.matchNotesPlaceholder || 'Record tactical observations for {match} ({teams}): auto pathing, intake cycle speed, double park execution, desyncs...')
+                .replace('{match}', alliance.matchName)
+                .replace('{teams}', teamListString)}
+              className="w-full p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all resize-y"
+            />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={handleClear}
+            disabled={!notes}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors disabled:opacity-30 disabled:pointer-events-none min-h-[44px]"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>{t.clearMatchNotes || 'Clear Notes'}</span>
+          </button>
+          <button
+            type="button"
             onClick={onClose}
             className="px-5 py-2.5 rounded-xl font-bold text-sm bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 transition-opacity min-h-[44px]"
           >
@@ -503,13 +796,33 @@ export function QuickQueueAlertModal({ match, onClose, onSave, lang = 'en' }) {
     onClose();
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && onClose) onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  useEffect(() => {
+    const orig = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = orig;
+    };
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn"
+      onClick={onClose}
+    >
       <div 
         className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl max-w-sm w-full p-6 space-y-5"
         role="dialog"
         aria-modal="true"
         aria-labelledby="queue-modal-title"
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -610,7 +923,7 @@ export function QuickQueueAlertModal({ match, onClose, onSave, lang = 'en' }) {
 // ============================================================================
 // Component: Cooperative Match Card (MANDATORY: NO RED VS BLUE)
 // ============================================================================
-export function CooperativeMatchCard({
+export const CooperativeMatchCard = React.memo(function CooperativeMatchCard({
   match,
   event,
   onSelectTeam,
@@ -619,10 +932,17 @@ export function CooperativeMatchCard({
   favorites = [],
   onToggleFavorite,
   activeAlertTeam = null,
-  lang = 'en'
+  lang = 'en',
+  onOpenNotes,
+  hasNotes: propHasNotes,
+  allMatchNotes = {}
 }) {
   const alliance = extractMatchAlliance(match);
   const t = { ...(translations?.[lang] || translations?.en || {}), ...(I18N[lang] || I18N.en) };
+
+  const matchId = match?.id != null ? match.id : match?.name;
+  const matchNotes = (allMatchNotes && matchId != null && allMatchNotes[matchId]) || (matchId != null ? getMatchNotes(matchId) : '');
+  const hasNotes = propHasNotes !== undefined ? propHasNotes : Boolean(matchNotes && matchNotes.trim().length > 0);
 
   const isAlertForThisMatch = activeAlertTeam && alliance.teams.some(tItem => tItem.number === activeAlertTeam);
   const hasBreakdownData = Boolean(alliance.breakdown);
@@ -797,7 +1117,7 @@ export function CooperativeMatchCard({
       {/* Card Footer: Action Bar (Queue Alert, Score Breakdown, Single .ics) */}
       <div className="flex items-center justify-between gap-2 mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
         
-        {/* Left Actions: Queue Alert */}
+        {/* Left Actions: Queue Alert & Match Scouting Notes */}
         <div className="flex items-center gap-1.5">
           <button
             type="button"
@@ -821,6 +1141,23 @@ export function CooperativeMatchCard({
               </>
             )}
           </button>
+
+          {/* Match Scouting Button */}
+          {onOpenNotes && (
+            <button
+              type="button"
+              onClick={() => onOpenNotes(match)}
+              aria-label={`Scout notes for ${alliance.matchName}`}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-bold text-xs transition-colors min-h-[44px] ${
+                hasNotes
+                  ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/60'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              <FileText className={`w-3.5 h-3.5 ${hasNotes ? 'text-amber-500' : 'text-slate-400'}`} />
+              <span>{hasNotes ? (t.notesBadge || 'Notes') : (t.scoutBadge || 'Scout')}</span>
+            </button>
+          )}
         </div>
 
         {/* Right Actions: View Breakdown & Calendar */}
@@ -851,7 +1188,7 @@ export function CooperativeMatchCard({
       </div>
     </article>
   );
-}
+});
 
 // ============================================================================
 // Main Export: MatchSchedule Component
@@ -877,10 +1214,12 @@ export default function MatchSchedule({
   // Modals State
   const [breakdownMatch, setBreakdownMatch] = useState(null);
   const [queueModalMatch, setQueueModalMatch] = useState(null);
+  const [notesModalMatch, setNotesModalMatch] = useState(null);
   
-  // Storage State (Favorites & Queue Alerts)
+  // Storage State (Favorites, Queue Alerts & Match Notes)
   const [favorites, setFavorites] = useState(() => getFavorites()?.teams || []);
   const [queueConfig, setQueueConfig] = useState(() => getQueueAlertConfig());
+  const [allMatchNotes, setAllMatchNotes] = useState(() => getAllMatchNotes());
   const [toastMessage, setToastMessage] = useState(null);
 
   // Sync with localStorage changes
@@ -888,14 +1227,15 @@ export default function MatchSchedule({
     const unsubscribe = subscribeToStorage((detail) => {
       setFavorites(getFavorites()?.teams || []);
       setQueueConfig(getQueueAlertConfig());
+      setAllMatchNotes(getAllMatchNotes());
     });
     return unsubscribe;
   }, []);
 
-  const handleToggleFavorite = (type, id) => {
+  const handleToggleFavorite = useCallback((type, id) => {
     toggleFavorite(type, id);
     setFavorites(getFavorites()?.teams || []);
-  };
+  }, []);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -961,13 +1301,13 @@ export default function MatchSchedule({
   };
 
   // Queue Alert Trigger handler
-  const handleTriggerQueueAlert = (teamNumber, match) => {
+  const handleTriggerQueueAlert = useCallback((teamNumber, match) => {
     if (parentOpenQueueAlert) {
       parentOpenQueueAlert({ match, teamNumber });
     } else {
       setQueueModalMatch(match);
     }
-  };
+  }, [parentOpenQueueAlert]);
 
   const divisionDisplay = division?.name || (divisionId ? `Division ${divisionId}` : '');
 
@@ -1151,21 +1491,37 @@ export default function MatchSchedule({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {filteredMatches.map((match) => (
-            <CooperativeMatchCard
-              key={match.id || match.name}
-              match={match}
-              event={event}
-              onSelectTeam={onSelectTeam}
-              onOpenBreakdown={setBreakdownMatch}
-              onOpenQueueAlert={handleTriggerQueueAlert}
-              favorites={favorites}
-              onToggleFavorite={handleToggleFavorite}
-              activeAlertTeam={queueConfig?.enabled ? queueConfig.teamNumber : null}
-              lang={lang}
-            />
-          ))}
+          {filteredMatches.map((match) => {
+            const mId = match.id != null ? match.id : match.name;
+            return (
+              <CooperativeMatchCard
+                key={mId}
+                match={match}
+                event={event}
+                onSelectTeam={onSelectTeam}
+                onOpenBreakdown={setBreakdownMatch}
+                onOpenQueueAlert={handleTriggerQueueAlert}
+                onOpenNotes={setNotesModalMatch}
+                hasNotes={Boolean(allMatchNotes && allMatchNotes[mId]?.trim())}
+                allMatchNotes={allMatchNotes}
+                favorites={favorites}
+                onToggleFavorite={handleToggleFavorite}
+                activeAlertTeam={queueConfig?.enabled ? queueConfig.teamNumber : null}
+                lang={lang}
+              />
+            );
+          })}
         </div>
+      )}
+
+      {/* Match Scouting Notes Modal */}
+      {notesModalMatch && (
+        <MatchScoutingNotesModal
+          match={notesModalMatch}
+          event={event}
+          onClose={() => setNotesModalMatch(null)}
+          lang={lang}
+        />
       )}
 
       {/* Score Breakdown Modal */}

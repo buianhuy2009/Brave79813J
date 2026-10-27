@@ -209,10 +209,21 @@ export default function TeamCompareModal({
   const [selectedTeams, setSelectedTeams] = useState(() => {
     const list = Array.isArray(initialTeams) 
       ? initialTeams.map(t => normalizeTeamKey(t)).filter(Boolean)
-      : [];
+      : (typeof initialTeams === 'string' && initialTeams ? [normalizeTeamKey(initialTeams)].filter(Boolean) : []);
     const deduped = Array.from(new Set(list)).slice(0, 4);
     return deduped;
   });
+
+  useEffect(() => {
+    if (initialTeams) {
+      const list = Array.isArray(initialTeams)
+        ? initialTeams.map(t => normalizeTeamKey(t)).filter(Boolean)
+        : (typeof initialTeams === 'string' && initialTeams ? [normalizeTeamKey(initialTeams)].filter(Boolean) : []);
+      if (list.length > 0) {
+        setSelectedTeams(Array.from(new Set(list)).slice(0, 4));
+      }
+    }
+  }, [initialTeams]);
 
   // State: active sub-tab ('matrix' | 'visuals' | 'synergy')
   const [activeTab, setActiveTab] = useState('matrix');

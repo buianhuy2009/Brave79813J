@@ -5,7 +5,8 @@ import MatchSchedule, {
   extractMatchAlliance, 
   CooperativeMatchCard, 
   ScoreBreakdownModal, 
-  QuickQueueAlertModal 
+  QuickQueueAlertModal,
+  MatchScoutingNotesModal
 } from './MatchSchedule';
 import * as icsExport from '../../utils/icsExport';
 import * as eventsStorage from '../../utils/eventsStorage';
@@ -319,6 +320,111 @@ describe('MatchSchedule & Cooperative Alliance Tests', () => {
       );
 
       expect(html).toMatch(/No matches found|Không tìm thấy trận đấu nào/i);
+    });
+  });
+
+  // =========================================================================
+  // 6. MatchScoutingNotesModal & CooperativeMatchCard Scouting Notes
+  // =========================================================================
+  describe('Match Scouting Notes Component & Card Integration', () => {
+    it('renders MatchScoutingNotesModal with match name, alliance teams, quick tags, and textarea', () => {
+      const html = renderToStaticMarkup(
+        <MatchScoutingNotesModal
+          match={sampleMatchWithSingleAlliance}
+          event={mockEvent}
+          onClose={vi.fn()}
+          lang="en"
+        />
+      );
+
+      expect(html).toContain('Practice 1');
+      expect(html).toContain('79813J &amp; 12345A');
+      expect(html).toMatch(/Match Tactical Tags/i);
+      expect(html).toContain('Great Synergy');
+      expect(html).toContain('Rapid Cycling');
+      expect(html).toContain('textarea');
+      expect(html).toMatch(/Clear Notes/i);
+    });
+
+    it('renders Vietnamese localization in MatchScoutingNotesModal', () => {
+      const html = renderToStaticMarkup(
+        <MatchScoutingNotesModal
+          match={sampleMatchWithSingleAlliance}
+          event={mockEvent}
+          onClose={vi.fn()}
+          lang="vi"
+        />
+      );
+
+      expect(html).toContain('Practice 1');
+      expect(html).toContain('Phối hợp ăn ý');
+      expect(html).toContain('Tốc độ nạp nhanh');
+      expect(html).toContain('Đóng');
+    });
+
+    it('displays Scout button on CooperativeMatchCard when onOpenNotes is provided', () => {
+      const onOpenNotes = vi.fn();
+      const html = renderToStaticMarkup(
+        <CooperativeMatchCard
+          match={sampleMatchWithSingleAlliance}
+          event={mockEvent}
+          onOpenNotes={onOpenNotes}
+          allMatchNotes={{}}
+        />
+      );
+
+      expect(html).toContain('Scout');
+      expect(html).toContain('aria-label="Scout notes for Practice 1"');
+    });
+
+    it('displays Notes button with amber highlight on CooperativeMatchCard when notes exist', () => {
+      const onOpenNotes = vi.fn();
+      const matchId = sampleMatchWithSingleAlliance.id;
+      const html = renderToStaticMarkup(
+        <CooperativeMatchCard
+          match={sampleMatchWithSingleAlliance}
+          event={mockEvent}
+          onOpenNotes={onOpenNotes}
+          allMatchNotes={{ [matchId]: '🤝 Great Synergy • ⚡ Rapid Cycling' }}
+        />
+      );
+
+      expect(html).toContain('Notes');
+      expect(html).toContain('text-amber-600');
+    });
+
+    it('displays Notes badge when scalar prop hasNotes is explicitly true', () => {
+      const onOpenNotes = vi.fn();
+      const html = renderToStaticMarkup(
+        <CooperativeMatchCard
+          match={sampleMatchWithSingleAlliance}
+          event={mockEvent}
+          onOpenNotes={onOpenNotes}
+          hasNotes={true}
+        />
+      );
+
+      expect(html).toContain('Notes');
+      expect(html).toContain('text-amber-600');
+    });
+
+    it('renders MatchScoutingNotesModal for match with only name (null id)', () => {
+      const matchOnlyName = {
+        name: 'Finals 1',
+        scored: false,
+        alliances: [{ score: 0, teams: [{ number: '79813J' }, { number: '12345A' }] }]
+      };
+      const html = renderToStaticMarkup(
+        <MatchScoutingNotesModal
+          match={matchOnlyName}
+          event={mockEvent}
+          onClose={vi.fn()}
+          lang="en"
+        />
+      );
+
+      expect(html).toContain('Finals 1');
+      expect(html).toContain('79813J &amp; 12345A');
     });
   });
 });

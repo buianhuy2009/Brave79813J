@@ -42,7 +42,8 @@ const I18N = {
     noMatchesDesc: 'Try adjusting your search query or run filter.',
     clearFilter: 'Clear filter',
     showingTeams: 'Showing {count} of {total} teams',
-    points: 'pts'
+    points: 'pts',
+    simulateSkills: 'Where Would I Place?'
   },
   vi: {
     skillsTitle: 'Bảng Điểm Kỹ Năng (Skills)',
@@ -68,7 +69,8 @@ const I18N = {
     noMatchesDesc: 'Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc lượt thi.',
     clearFilter: 'Xóa bộ lọc',
     showingTeams: 'Hiển thị {count} / {total} đội',
-    points: 'điểm'
+    points: 'điểm',
+    simulateSkills: 'Tôi Xếp Thứ Mấy?'
   }
 };
 
@@ -221,6 +223,7 @@ export default function SkillsStandings({
   skills = [],
   teams = [],
   onSelectTeam = null,
+  onOpenSimulator = null,
   lang = 'en'
 }) {
   const t = I18N[lang] || I18N.en;
@@ -387,6 +390,18 @@ export default function SkillsStandings({
             <Download className="w-3.5 h-3.5 text-cyan-500" />
             <span className="hidden sm:inline">{t.exportCsv}</span>
           </button>
+
+          {onOpenSimulator && (
+            <button
+              type="button"
+              onClick={() => onOpenSimulator({})}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-cyan-50 dark:bg-cyan-950/60 hover:bg-cyan-100 dark:hover:bg-cyan-900/60 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 text-xs font-bold transition-all hover:scale-105 active:scale-95 min-h-[44px]"
+              title={lang === 'vi' ? 'Mô phỏng vị trí của bạn trên bảng xếp hạng thế giới' : 'Simulate your ranking on world skills leaderboard'}
+            >
+              <Target className="w-3.5 h-3.5 text-cyan-500" />
+              <span>{t.simulateSkills}</span>
+            </button>
+          )}
         </div>
       </div>
 

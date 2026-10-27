@@ -15,6 +15,8 @@
 
 export const STORAGE_KEY_FAVORITES = 'vexiq_live_favorites';
 export const STORAGE_KEY_QUEUE_ALERTS = 'vexiq_live_queue_alerts';
+export const STORAGE_KEY_SCOUTING_NOTES = 'vexiq_live_scouting_notes';
+export const STORAGE_KEY_MATCH_NOTES = 'vexiq_live_match_notes';
 export const STORAGE_EVENT_NAME = 'vexiq_events_storage_change';
 
 export const DEFAULT_FAVORITES = Object.freeze({
@@ -31,6 +33,8 @@ export const DEFAULT_QUEUE_ALERT_CONFIG = Object.freeze({
 // In-memory fallback caches when localStorage is unavailable
 let inMemoryFavorites = null;
 let inMemoryQueueAlert = null;
+let inMemoryScoutingNotes = {};
+let inMemoryMatchNotes = {};
 
 /**
  * Safely test if localStorage is supported and writable
@@ -335,6 +339,259 @@ export function resetQueueAlertConfig() {
 }
 
 // ============================================================================
+// Match & Team Scouting Notes API (LemonVEX Parity)
+// ============================================================================
+
+/**
+ * Retrieve saved scouting notes for a team
+ * @param {string} teamNumber 
+ * @returns {string}
+ */
+export function getTeamNotes(teamNumber) {
+  if (!teamNumber) return '';
+  const normTeam = String(teamNumber).trim().toUpperCase();
+  const storage = getStorage();
+  if (!storage) {
+    return inMemoryScoutingNotes[normTeam] || '';
+  }
+  try {
+    const raw = storage.getItem(STORAGE_KEY_SCOUTING_NOTES);
+    if (!raw) return inMemoryScoutingNotes[normTeam] || '';
+    const parsed = JSON.parse(raw);
+    return typeof parsed?.[normTeam] === 'string' ? parsed[normTeam] : (inMemoryScoutingNotes[normTeam] || '');
+  } catch (err) {
+    return inMemoryScoutingNotes[normTeam] || '';
+  }
+}
+
+/**
+ * Save scouting notes for a team
+ * @param {string} teamNumber 
+ * @param {string} notes 
+ * @returns {string}
+ */
+export function setTeamNotes(teamNumber, notes) {
+  if (!teamNumber) return '';
+  const normTeam = String(teamNumber).trim().toUpperCase();
+  const cleanNotes = typeof notes === 'string' ? notes : (notes != null ? String(notes) : '');
+
+  let allNotes = {};
+  const storage = getStorage();
+  if (storage) {
+    try {
+      const raw = storage.getItem(STORAGE_KEY_SCOUTING_NOTES);
+      if (raw) allNotes = JSON.parse(raw) || {};
+    } catch (e) {
+      allNotes = {};
+    }
+  } else {
+    allNotes = { ...inMemoryScoutingNotes };
+  }
+
+  if (cleanNotes.trim()) {
+    allNotes[normTeam] = cleanNotes;
+  } else {
+    delete allNotes[normTeam];
+  }
+
+  inMemoryScoutingNotes = { ...allNotes };
+
+  if (storage) {
+    try {
+      storage.setItem(STORAGE_KEY_SCOUTING_NOTES, JSON.stringify(allNotes));
+    } catch (err) {
+      console.warn('[eventsStorage] Failed to save scouting notes:', err);
+    }
+  }
+
+  notifyChange(STORAGE_KEY_SCOUTING_NOTES, 'update', { teamNumber: normTeam, notes: cleanNotes });
+  return cleanNotes;
+}
+
+/**
+ * Get dictionary of all team scouting notes
+ * @returns {Record<string, string>}
+ */
+export function getAllTeamNotes() {
+  const storage = getStorage();
+  if (!storage) return { ...inMemoryScoutingNotes };
+  try {
+    const raw = storage.getItem(STORAGE_KEY_SCOUTING_NOTES);
+    return raw ? JSON.parse(raw) || {} : {};
+  } catch (err) {
+    return { ...inMemoryScoutingNotes };
+  }
+}
+
+/**
+ * Clear all scouting notes
+ */
+export function clearAllTeamNotes() {
+  inMemoryScoutingNotes = {};
+  const storage = getStorage();
+  if (storage) {
+    try {
+      storage.removeItem(STORAGE_KEY_SCOUTING_NOTES);
+    } catch (e) {}
+  }
+  notifyChange(STORAGE_KEY_SCOUTING_NOTES, 'clear', {});
+}
+
+// ============================================================================
+// Match Scouting Notes API (Match Schedule & Alliance Strategy)
+// ============================================================================
+
+/**
+ * Retrieve saved scouting notes for a match
+ * @param {string|number} matchId 
+ * @returns {string}
+ */
+export function getMatchNotes(matchId) {
+  if (matchId == null || matchId === '') return '';
+  const key = String(matchId).trim();
+  const storage = getStorage();
+  if (!storage) {
+    return inMemoryMatchNotes[key] || '';
+  }
+  try {
+    const raw = storage.getItem(STORAGE_KEY_MATCH_NOTES);
+    if (!raw) return inMemoryMatchNotes[key] || '';
+    const parsed = JSON.parse(raw);
+    return typeof parsed?.[key] === 'string' ? parsed[key] : (inMemoryMatchNotes[key] || '');
+  } catch (err) {
+    return inMemoryMatchNotes[key] || '';
+  }
+}
+
+/**
+ * Save scouting notes for a match
+ * @param {string|number} matchId 
+ * @param {string} notes 
+ * @returns {string}
+ */
+export function setMatchNotes(matchId, notes) {
+  if (matchId == null || matchId === '') return '';
+  const key = String(matchId).trim();
+  const cleanNotes = typeof notes === 'string' ? notes : (notes != null ? String(notes) : '');
+
+  let allNotes = {};
+  const storage = getStorage();
+  if (storage) {
+    try {
+      const raw = storage.getItem(STORAGE_KEY_MATCH_NOTES);
+      if (raw) allNotes = JSON.parse(raw) || {};
+    } catch (e) {
+      allNotes = {};
+    }
+  } else {
+    allNotes = { ...inMemoryMatchNotes };
+  }
+
+  if (cleanNotes.trim()) {
+    allNotes[key] = cleanNotes;
+  } else {
+    delete allNotes[key];
+  }
+
+  inMemoryMatchNotes = { ...allNotes };
+
+  if (storage) {
+    try {
+      storage.setItem(STORAGE_KEY_MATCH_NOTES, JSON.stringify(allNotes));
+    } catch (err) {
+      console.warn('[eventsStorage] Failed to save match notes:', err);
+    }
+  }
+
+  notifyChange(STORAGE_KEY_MATCH_NOTES, 'update', { matchId: key, notes: cleanNotes });
+  return cleanNotes;
+}
+
+/**
+ * Get dictionary of all match scouting notes
+ * @returns {Record<string, string>}
+ */
+export function getAllMatchNotes() {
+  const storage = getStorage();
+  if (!storage) return { ...inMemoryMatchNotes };
+  try {
+    const raw = storage.getItem(STORAGE_KEY_MATCH_NOTES);
+    return raw ? JSON.parse(raw) || {} : {};
+  } catch (err) {
+    return { ...inMemoryMatchNotes };
+  }
+}
+
+/**
+ * Clear all match scouting notes
+ */
+export function clearAllMatchNotes() {
+  inMemoryMatchNotes = {};
+  const storage = getStorage();
+  if (storage) {
+    try {
+      storage.removeItem(STORAGE_KEY_MATCH_NOTES);
+    } catch (e) {}
+  }
+  notifyChange(STORAGE_KEY_MATCH_NOTES, 'clear', {});
+}
+
+/**
+ * Safely toggles a quick tactical tag on/off in scouting notes
+ * without corrupting multi-line formatting or leaving duplicate bullet delimiters.
+ * 
+ * @param {string} currentNotes 
+ * @param {string} tag 
+ * @returns {string} Updated notes
+ */
+export function toggleScoutingTag(currentNotes, tag) {
+  const notes = typeof currentNotes === 'string' ? currentNotes : '';
+  if (!tag) return notes;
+
+  const escapedTag = tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  // Check if tag is currently active
+  if (notes.includes(tag)) {
+    // Toggle OFF:
+    // Remove tag with surrounding bullets and spaces, without altering untouched newlines
+    let updated = notes
+      // Case A: preceded by bullet (e.g. " • Tag")
+      .replace(new RegExp(`[ \\t]*•[ \\t]*${escapedTag}`, 'g'), '')
+      // Case B: followed by bullet (e.g. "Tag • ")
+      .replace(new RegExp(`${escapedTag}[ \\t]*•[ \\t]*`, 'g'), '')
+      // Case C: standalone tag without bullet
+      .replace(new RegExp(escapedTag, 'g'), '');
+
+    // Clean up any double bullets on the same line (e.g. "TagA •  • TagB")
+    updated = updated.replace(/[ \t]*•[ \t]*(?:•[ \t]*)+/g, ' • ');
+
+    // Clean up empty lines or orphan bullets on a line
+    updated = updated
+      .split('\n')
+      .map(line => {
+        const trimmed = line.trim();
+        if (trimmed === '•' || trimmed === '') return '';
+        return line.replace(/^[ \t]*•[ \t]*/, '').replace(/[ \t]*•[ \t]*$/, '').trimEnd();
+      })
+      .join('\n');
+
+    // Trim trailing empty lines
+    return updated.replace(/^\n+|\n+$/g, '').trim();
+  } else {
+    // Toggle ON:
+    const trimmed = notes.trim();
+    if (!trimmed) {
+      return tag;
+    }
+    // If notes ends with newline, append to new line, otherwise append with bullet
+    if (notes.endsWith('\n')) {
+      return `${notes}${tag}`;
+    }
+    return `${trimmed} • ${tag}`;
+  }
+}
+
+// ============================================================================
 // Cross-Tab & Same-Tab React Hook Helper
 // ============================================================================
 
@@ -355,6 +612,10 @@ export function subscribeToStorage(callback) {
       callback({ key: STORAGE_KEY_FAVORITES, action: 'storage_sync', data: getFavorites() });
     } else if (event.key === STORAGE_KEY_QUEUE_ALERTS) {
       callback({ key: STORAGE_KEY_QUEUE_ALERTS, action: 'storage_sync', data: getQueueAlertConfig() });
+    } else if (event.key === STORAGE_KEY_SCOUTING_NOTES) {
+      callback({ key: STORAGE_KEY_SCOUTING_NOTES, action: 'storage_sync', data: getAllTeamNotes() });
+    } else if (event.key === STORAGE_KEY_MATCH_NOTES) {
+      callback({ key: STORAGE_KEY_MATCH_NOTES, action: 'storage_sync', data: getAllMatchNotes() });
     }
   };
 

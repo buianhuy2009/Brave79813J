@@ -419,6 +419,19 @@ export default function WorldSkillsSimulator({
   const [driverScore, setDriverScore] = useState(initialDriverScore);
   const [progScore, setProgScore] = useState(initialProgScore);
 
+  // Synchronize when initial props change
+  useEffect(() => {
+    if (initialDriverScore !== undefined && initialDriverScore !== null) {
+      setDriverScore(Number(initialDriverScore) || 0);
+    }
+  }, [initialDriverScore]);
+
+  useEffect(() => {
+    if (initialProgScore !== undefined && initialProgScore !== null) {
+      setProgScore(Number(initialProgScore) || 0);
+    }
+  }, [initialProgScore]);
+
   // Global Season Standings State
   const [seasonSkillsList, setSeasonSkillsList] = useState([]);
   const [loadingSeason, setLoadingSeason] = useState(true);
@@ -511,6 +524,24 @@ export default function WorldSkillsSimulator({
   // Event High Preset
   const eventLeader = normalizedEventSkills[0];
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && onClose) onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const orig = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = orig;
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
@@ -519,9 +550,11 @@ export default function WorldSkillsSimulator({
       role="dialog"
       aria-modal="true"
       aria-labelledby="skills-simulator-title"
+      onClick={onClose}
     >
       <div 
         className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl max-w-2xl w-full p-5 sm:p-7 space-y-6 my-auto text-slate-800 dark:text-slate-100"
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
